@@ -2,6 +2,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use dns_lookup::lookup_host;
 
+
 fn main() {
     // Construct a new `MasshClient` from a YAML configuration file.
     //let yaml = std::fs::read_to_string("massh.yaml").unwrap();
@@ -16,7 +17,6 @@ fn main() {
         hosts: vec![
             MasshHostConfig {
                 addr: lookup_host("admin.zth-dev.logmatching.iponweb.net").unwrap()[0],
-                //addr: IpAddr::V4(Ipv4Addr::new(35,211,176,68)),
                 auth: None,
                 port: None,
                 user: None,
