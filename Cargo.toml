@@ -7,4 +7,12 @@ edition = "2021"
 
 [dependencies]
 dns-lookup = "2.0.2"
+log = "0.4.0"
+env_logger = "0.10.0"
 massh = "0.6.3"
+whoami = "1.4.0"
+lazy-st = "0.2.2"
+regex = "1"
+clap = { version = "4.3.4", features = ["derive"] }
+colored = "2.0.0"
+dialoguer = "0.10.4"
