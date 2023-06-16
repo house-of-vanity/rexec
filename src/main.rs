@@ -2,6 +2,7 @@ use colored::*;
 use dialoguer::Confirm;
 use dns_lookup::lookup_host;
 use env_logger::Env;
+use itertools::Itertools;
 use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use regex::Regex;
@@ -13,33 +14,40 @@ extern crate log;
 
 use clap::Parser;
 
-/// Simple program to greet a person
+// parse args
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Name of the person to greet
     #[arg(short, long, default_value_t = whoami::username())]
     username: String,
 
-    #[arg(short, long)]
-    pattern: String,
+    #[arg(short, long, help = "Use known_hosts to build servers list.")]
+    expression: String,
 
-    #[arg(short, long)]
+    #[arg(short, long, help = "Command to execute on servers.")]
     command: String,
+
+    #[arg(short, long, default_value_t = false, help = "Show exit code ONLY")]
+    code: bool,
+
+    #[arg(short, long, default_value_t = 100)]
+    parallel: i32,
 }
 
-#[derive(Debug, Default)]
+// Represent line from known_hosts file
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 struct KnownHost {
     name: String,
     ip: Option<IpAddr>,
 }
 
-impl KnownHost {
-    fn new(name: String) -> KnownHost {
-        KnownHost { name, ip: None }
-    }
-}
+// impl KnownHost {
+//     fn new(name: String) -> KnownHost {
+//         KnownHost { name, ip: None }
+//     }
+// }
 
+// Read known_hosts file
 fn read_known_hosts() -> Vec<KnownHost> {
     let mut result: Vec<KnownHost> = Vec::new();
 
@@ -49,10 +57,6 @@ fn read_known_hosts() -> Vec<KnownHost> {
     {
         let line = line.split(" ").collect::<Vec<&str>>();
         let hostname = line[0];
-        // let ip = match lookup_host(hostname) {
-        //     Ok(ip) => ip[0],
-        //     Err(_) => continue
-        // };
         result.push(KnownHost {
             name: hostname.to_string(),
             ip: None,
@@ -69,13 +73,18 @@ fn main() {
     let args = Args::parse();
 
     let known_hosts = read_known_hosts();
-    let re = Regex::new(&args.pattern).unwrap();
+    // Build regex
+    let re = Regex::new(&args.expression).unwrap();
+    // match hostnames from known_hosts to regex
     let mut matched_hosts: Vec<KnownHost> = known_hosts
         .into_iter()
         .filter(|r| re.is_match(&r.name.clone()))
-        //.filter(|a| a.access.iter().any(|b| b.users.contains(&user)))
         .collect();
 
+    // Dedup hosts from known_hosts file
+    let mut matched_hosts: Vec<_> = matched_hosts.into_iter().unique().collect();
+
+    // Build MasshHostConfig hostnames list
     let mut massh_hosts: Vec<MasshHostConfig> = vec![];
     info!("Matched hosts:");
     for host in matched_hosts.iter() {
@@ -95,19 +104,19 @@ fn main() {
         })
     }
 
+    // Build MasshConfig using massh_hosts vector
     let config = MasshConfig {
         default_auth: SshAuth::Agent,
         default_port: 22,
         //default_user: whoami::username(),
         default_user: "abogomyakov".to_string(),
-        threads: 10,
+        threads: args.parallel as u64,
         timeout: 0,
         hosts: massh_hosts,
     };
     let massh = MasshClient::from(&config);
 
-    // Receive the result of the command for each host and print its output.
-
+    // Ask for confirmation
     if Confirm::new()
         .with_prompt(format!(
             "Continue on following {} servers?",
@@ -118,7 +127,10 @@ fn main() {
     {
         info!("\n");
         info!("Run command on {} servers.", &config.hosts.len());
-        info!("\n"); // Run a command on all the configured hosts.
+        info!("\n");
+
+        // Run a command on all the configured hosts.
+        // Receive the result of the command for each host and print its output.
         let rx = massh.execute(args.command);
 
         while let Ok((host, result)) = rx.recv() {
@@ -129,9 +141,10 @@ fn main() {
             } else {
                 info!("Code {}", output.exit_status.to_string().red());
             };
-
-            info!("STDOUT:\n{}", String::from_utf8(output.stdout).unwrap());
-            info!("STDERR:\n{}", String::from_utf8(output.stderr).unwrap());
+            if !args.code {
+                info!("STDOUT:\n{}", String::from_utf8(output.stdout).unwrap());
+                info!("STDERR:\n{}", String::from_utf8(output.stderr).unwrap());
+            }
         }
     } else {
         warn!("Stopped");

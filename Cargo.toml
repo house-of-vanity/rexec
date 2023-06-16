@@ -16,3 +16,4 @@ regex = "1"
 clap = { version = "4.3.4", features = ["derive"] }
 colored = "2.0.0"
 dialoguer = "0.10.4"
+itertools = "0.10.5"
