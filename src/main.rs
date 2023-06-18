@@ -6,8 +6,11 @@ use itertools::Itertools;
 use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use regex::Regex;
+use std::collections::{HashMap, HashSet};
 use std::fs::read_to_string;
+use std::hash::Hash;
 use std::net::IpAddr;
+use std::str::FromStr;
 
 #[macro_use]
 extern crate log;
@@ -21,14 +24,17 @@ struct Args {
     #[arg(short, long, default_value_t = whoami::username())]
     username: String,
 
-    #[arg(short, long, help = "Use known_hosts to build servers list.")]
-    expression: String,
+    #[arg(short, long = "kh", help = "Use known_hosts to build servers list")]
+    known_hosts: String,
 
-    #[arg(short, long, help = "Command to execute on servers.")]
+    #[arg(short, long, help = "Command to execute on servers")]
     command: String,
 
-    #[arg(short, long, default_value_t = false, help = "Show exit code ONLY")]
+    #[arg(long, default_value_t = false, help = "Show exit code ONLY")]
     code: bool,
+
+    #[arg(long, default_value_t = false, help = "Don't ask for confirmation")]
+    noconfirm: bool,
 
     #[arg(short, long, default_value_t = 100)]
     parallel: i32,
@@ -74,7 +80,7 @@ fn main() {
 
     let known_hosts = read_known_hosts();
     // Build regex
-    let re = Regex::new(&args.expression).unwrap();
+    let re = Regex::new(&args.known_hosts).unwrap();
     // match hostnames from known_hosts to regex
     let mut matched_hosts: Vec<KnownHost> = known_hosts
         .into_iter()
@@ -86,6 +92,7 @@ fn main() {
 
     // Build MasshHostConfig hostnames list
     let mut massh_hosts: Vec<MasshHostConfig> = vec![];
+    let mut hosts_and_ips: HashMap<IpAddr, String> = HashMap::new();
     info!("Matched hosts:");
     for host in matched_hosts.iter() {
         let ip = match lookup_host(&host.name) {
@@ -96,6 +103,7 @@ fn main() {
             }
         };
         info!("{} [{}]", &host.name, ip);
+        hosts_and_ips.insert(ip, host.name.clone());
         massh_hosts.push(MasshHostConfig {
             addr: ip,
             auth: None,
@@ -103,13 +111,11 @@ fn main() {
             user: None,
         })
     }
-
     // Build MasshConfig using massh_hosts vector
     let config = MasshConfig {
         default_auth: SshAuth::Agent,
         default_port: 22,
-        //default_user: whoami::username(),
-        default_user: "abogomyakov".to_string(),
+        default_user: args.username,
         threads: args.parallel as u64,
         timeout: 0,
         hosts: massh_hosts,
@@ -117,13 +123,14 @@ fn main() {
     let massh = MasshClient::from(&config);
 
     // Ask for confirmation
-    if Confirm::new()
-        .with_prompt(format!(
-            "Continue on following {} servers?",
-            &config.hosts.len()
-        ))
-        .interact()
-        .unwrap()
+    if args.noconfirm == true
+        || Confirm::new()
+            .with_prompt(format!(
+                "Continue on following {} servers?",
+                &config.hosts.len()
+            ))
+            .interact()
+            .unwrap()
     {
         info!("\n");
         info!("Run command on {} servers.", &config.hosts.len());
@@ -134,7 +141,12 @@ fn main() {
         let rx = massh.execute(args.command);
 
         while let Ok((host, result)) = rx.recv() {
-            info!("{}", host.yellow().bold());
+            let ip: String = host.split('@').collect::<Vec<_>>()[1]
+                .split(':')
+                .collect::<Vec<_>>()[0].to_string();
+            let ip = ip.parse::<IpAddr>().unwrap();
+            //let ip = hosts_and_ips.get(&ip).unwrap_or(&"Couldn't parse IP".yellow().bold().to_string());
+            info!("{}", hosts_and_ips.get(&ip).unwrap_or(&"Couldn't parse IP".yellow().bold().to_string()));
             let output = result.unwrap();
             if output.exit_status == 0 {
                 info!("Code {}", output.exit_status.to_string().green());
