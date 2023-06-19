@@ -1,6 +1,8 @@
 # rexec
 Parallel SSH executor in Rust. Read hosts from `known_hosts`
+
 [![Rust-static-build](https://github.com/house-of-vanity/rexec/actions/workflows/release.yml/badge.svg)](https://github.com/house-of-vanity/rexec/actions/workflows/release.yml)
+
 ```
 [ab@test debug]$ ./rexec -k admin-gce-sc.* --help
 Usage: rexec [OPTIONS] --kh <KNOWN_HOSTS> --command <COMMAND>
