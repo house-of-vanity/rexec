@@ -27,5 +27,6 @@ jobs:
       uses: Roang-zero1/github-upload-release-artifacts-action@v2
       with:
         args: "rexec"
+        bodyFile: CHANGES.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

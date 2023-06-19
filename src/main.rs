@@ -6,8 +6,8 @@ use env_logger::Env;
 use itertools::Itertools;
 use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
-use regex::{Regex};
-use std::collections::{HashMap};
+use regex::Regex;
+use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::net::IpAddr;
@@ -178,13 +178,17 @@ fn main() {
                 "{}",
                 hosts_and_ips
                     .get(&ip)
-                    .unwrap_or(&"Couldn't parse IP".to_string()).to_string().yellow().bold().to_string()
+                    .unwrap_or(&"Couldn't parse IP".to_string())
+                    .to_string()
+                    .yellow()
+                    .bold()
+                    .to_string()
             );
             let output = match result {
                 Ok(output) => output,
                 Err(e) => {
                     error!("Can't access server: {}", e);
-                    continue
+                    continue;
                 }
             };
             if output.exit_status == 0 {
