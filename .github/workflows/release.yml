@@ -11,6 +11,13 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+    - name: Wait for tests to succeed
+      uses: lewagon/wait-on-check-action@v1.3.1
+      with:
+        ref: ${{ github.ref }}
+        check-name: 'Upload artifact'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        wait-interval: 10
     - uses: actions/checkout@master
     - name: Create release
       uses: Roang-zero1/github-create-release-action@v2
