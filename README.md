@@ -1,5 +1,5 @@
 # rexec
-Parallel SSH executor in Rust. It can read servers from `known_hosts` or expand servers from bash expanshion line cassandra.{prod,dev}.example.com
+Parallel SSH executor in Rust. It can read servers from `~/.ssh/known_hosts` or expand servers from bash expanshion line `cassandra.{prod,dev}.example.com`
 
 [![Rust-static-build](https://github.com/house-of-vanity/rexec/actions/workflows/release.yml/badge.svg)](https://github.com/house-of-vanity/rexec/actions/workflows/release.yml)
 
