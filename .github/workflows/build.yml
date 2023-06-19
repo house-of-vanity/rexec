@@ -11,8 +11,10 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Build-musl
       uses: gmiam/rust-musl-action@master
       with:
@@ -22,3 +24,6 @@ jobs:
       with:
         name: ${{ env.BINARY_NAME }}
         path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
