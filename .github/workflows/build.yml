@@ -23,11 +23,16 @@ jobs:
       uses: gmiam/rust-musl-action@master
       with:
         args: cargo build --target $BUILD_TARGET --release
-    - uses: actions/upload-artifact@v2
-      name: Upload artifact
-      with:
-        name: ${{ env.BINARY_NAME }}
-        path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
-    - uses: ncipollo/release-action@v1
-      with:
-        artifacts: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/upload-artifact@v2
+        name: Upload artifact
+        with:
+          name: ${{ env.BINARY_NAME }}
+          path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*

@@ -174,12 +174,11 @@ fn main() {
                 .collect::<Vec<_>>()[0]
                 .to_string();
             let ip = ip.parse::<IpAddr>().unwrap();
-            //let ip = hosts_and_ips.get(&ip).unwrap_or(&"Couldn't parse IP".yellow().bold().to_string());
             info!(
                 "{}",
                 hosts_and_ips
                     .get(&ip)
-                    .unwrap_or(&"Couldn't parse IP".yellow().bold().to_string())
+                    .unwrap_or(&"Couldn't parse IP".to_string()).to_string().yellow().bold().to_string()
             );
             let output = match result {
                 Ok(output) => output,
@@ -189,13 +188,13 @@ fn main() {
                 }
             };
             if output.exit_status == 0 {
-                info!("Code {}", output.exit_status.to_string().green());
+                println!("Code {}", output.exit_status);
             } else {
-                info!("Code {}", output.exit_status.to_string().red());
+                error!("Code {}", output.exit_status);
             };
             if !args.code {
-                info!("STDOUT:\n{}", String::from_utf8(output.stdout).unwrap());
-                info!("STDERR:\n{}", String::from_utf8(output.stderr).unwrap());
+                println!("STDOUT:\n{}", String::from_utf8(output.stdout).unwrap());
+                println!("STDERR:\n{}", String::from_utf8(output.stderr).unwrap());
             }
         }
     } else {
