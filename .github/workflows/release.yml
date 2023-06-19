@@ -1,28 +1,53 @@
 
-on:
-  release:
-    types: [created]
+# on:
+#   release:
+#     types: [created]
 
+# jobs:
+#   release:
+#     name: release ${{ matrix.target }}
+#     runs-on: ubuntu-latest
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         include:
+#           - target: x86_64-pc-windows-gnu
+#             archive: zip
+#           - target: x86_64-unknown-linux-musl
+#             archive: tar.gz tar.xz tar.zst
+#           - target: x86_64-apple-darwin
+#             archive: zip
+#     steps:
+#       - uses: actions/checkout@master
+#       - name: Compile and release
+#         uses: rust-build/rust-build.action@v1.4.3
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#         with:
+#           RUSTTARGET: ${{ matrix.target }}
+#           ARCHIVE_TYPES: ${{ matrix.archive }}
+
+
+name: Rust-static-build
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+env:
+  CARGO_TERM_COLOR: always
+  BUILD_TARGET: x86_64-unknown-linux-musl
+  BINARY_NAME: rexec
 jobs:
-  release:
-    name: release ${{ matrix.target }}
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-pc-windows-gnu
-            archive: zip
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz tar.xz tar.zst
-          - target: x86_64-apple-darwin
-            archive: zip
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
+    - uses: actions/checkout@v2
+    - name: Build-musl
+      uses: gmiam/rust-musl-action@master
+      with:
+        args: cargo build --target $BUILD_TARGET --release
+    - uses: actions/upload-artifact@v2
+      with:
+        name: ${{ env.BINARY_NAME }}
+        path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
