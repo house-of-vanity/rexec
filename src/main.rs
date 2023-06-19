@@ -6,12 +6,12 @@ use env_logger::Env;
 use itertools::Itertools;
 use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
-use regex::{Error, Regex};
-use std::collections::{HashMap, HashSet};
+use regex::{Regex};
+use std::collections::{HashMap};
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::net::IpAddr;
-use std::str::FromStr;
+
 use std::process;
 
 #[macro_use]
@@ -116,7 +116,7 @@ fn main() {
     };
 
     // Dedup hosts from known_hosts file
-    let mut matched_hosts: Vec<_> = hosts.into_iter().unique().collect();
+    let matched_hosts: Vec<_> = hosts.into_iter().unique().collect();
 
     // Build MasshHostConfig hostnames list
     let mut massh_hosts: Vec<MasshHostConfig> = vec![];
