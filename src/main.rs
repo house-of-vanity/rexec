@@ -1,3 +1,4 @@
+use brace_expand::brace_expand;
 use colored::*;
 use dialoguer::Confirm;
 use dns_lookup::lookup_host;
@@ -5,27 +6,31 @@ use env_logger::Env;
 use itertools::Itertools;
 use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
-use regex::Regex;
+use regex::{Error, Regex};
 use std::collections::{HashMap, HashSet};
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::net::IpAddr;
 use std::str::FromStr;
+use std::process;
 
 #[macro_use]
 extern crate log;
 
 use clap::Parser;
 
-// parse args
+// Define args
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author = "AB ab@hexor.ru", version, about = "Parallel SSH executor in Rust", long_about = None)]
 struct Args {
     #[arg(short, long, default_value_t = whoami::username())]
     username: String,
 
-    #[arg(short, long = "kh", help = "Use known_hosts to build servers list")]
-    known_hosts: String,
+    #[arg(short, long, help = "Use known_hosts to build servers list")]
+    known_hosts: bool,
+
+    #[arg(short, long, help = "Expression to build server list")]
+    expression: String,
 
     #[arg(short, long, help = "Command to execute on servers")]
     command: String,
@@ -33,7 +38,12 @@ struct Args {
     #[arg(long, default_value_t = false, help = "Show exit code ONLY")]
     code: bool,
 
-    #[arg(long, default_value_t = false, help = "Don't ask for confirmation")]
+    #[arg(
+        short = 'f',
+        long,
+        default_value_t = false,
+        help = "Don't ask for confirmation"
+    )]
     noconfirm: bool,
 
     #[arg(short, long, default_value_t = 100)]
@@ -42,20 +52,14 @@ struct Args {
 
 // Represent line from known_hosts file
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-struct KnownHost {
+struct Host {
     name: String,
     ip: Option<IpAddr>,
 }
 
-// impl KnownHost {
-//     fn new(name: String) -> KnownHost {
-//         KnownHost { name, ip: None }
-//     }
-// }
-
 // Read known_hosts file
-fn read_known_hosts() -> Vec<KnownHost> {
-    let mut result: Vec<KnownHost> = Vec::new();
+fn read_known_hosts() -> Vec<Host> {
+    let mut result: Vec<Host> = Vec::new();
 
     for line in read_to_string(format!("/home/{}/.ssh/known_hosts", whoami::username()))
         .unwrap()
@@ -63,7 +67,19 @@ fn read_known_hosts() -> Vec<KnownHost> {
     {
         let line = line.split(" ").collect::<Vec<&str>>();
         let hostname = line[0];
-        result.push(KnownHost {
+        result.push(Host {
+            name: hostname.to_string(),
+            ip: None,
+        })
+    }
+    result
+}
+
+fn expand_expression(expr: &str) -> Vec<Host> {
+    let mut result: Vec<Host> = Vec::new();
+
+    for hostname in brace_expand(expr) {
+        result.push(Host {
             name: hostname.to_string(),
             ip: None,
         })
@@ -78,17 +94,29 @@ fn main() {
         .init();
     let args = Args::parse();
 
-    let known_hosts = read_known_hosts();
-    // Build regex
-    let re = Regex::new(&args.known_hosts).unwrap();
-    // match hostnames from known_hosts to regex
-    let mut matched_hosts: Vec<KnownHost> = known_hosts
-        .into_iter()
-        .filter(|r| re.is_match(&r.name.clone()))
-        .collect();
+    let hosts = if args.known_hosts {
+        info!("Using ~/.ssh/known_hosts to build server list.");
+        let known_hosts = read_known_hosts();
+        // Build regex
+        let re = match Regex::new(&args.expression) {
+            Ok(result) => result,
+            Err(e) => {
+                error!("Error parsing regex. {}", e);
+                process::exit(1);
+            }
+        };
+        // match hostnames from known_hosts to regex
+        known_hosts
+            .into_iter()
+            .filter(|r| re.is_match(&r.name.clone()))
+            .collect()
+    } else {
+        info!("Using string expansion to build server list.");
+        expand_expression(&args.expression)
+    };
 
     // Dedup hosts from known_hosts file
-    let mut matched_hosts: Vec<_> = matched_hosts.into_iter().unique().collect();
+    let mut matched_hosts: Vec<_> = hosts.into_iter().unique().collect();
 
     // Build MasshHostConfig hostnames list
     let mut massh_hosts: Vec<MasshHostConfig> = vec![];
@@ -98,7 +126,7 @@ fn main() {
         let ip = match lookup_host(&host.name) {
             Ok(ip) => ip[0],
             Err(_) => {
-                error!("{} couldn't ve resolved.", &host.name.red());
+                error!("{} couldn't be resolved.", &host.name.red());
                 continue;
             }
         };
@@ -143,11 +171,23 @@ fn main() {
         while let Ok((host, result)) = rx.recv() {
             let ip: String = host.split('@').collect::<Vec<_>>()[1]
                 .split(':')
-                .collect::<Vec<_>>()[0].to_string();
+                .collect::<Vec<_>>()[0]
+                .to_string();
             let ip = ip.parse::<IpAddr>().unwrap();
             //let ip = hosts_and_ips.get(&ip).unwrap_or(&"Couldn't parse IP".yellow().bold().to_string());
-            info!("{}", hosts_and_ips.get(&ip).unwrap_or(&"Couldn't parse IP".yellow().bold().to_string()));
-            let output = result.unwrap();
+            info!(
+                "{}",
+                hosts_and_ips
+                    .get(&ip)
+                    .unwrap_or(&"Couldn't parse IP".yellow().bold().to_string())
+            );
+            let output = match result {
+                Ok(output) => output,
+                Err(e) => {
+                    error!("Can't access server: {}", e);
+                    continue
+                }
+            };
             if output.exit_status == 0 {
                 info!("Code {}", output.exit_status.to_string().green());
             } else {

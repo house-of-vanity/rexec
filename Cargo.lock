@@ -120,6 +120,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "brace-expand"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3adb80ee272c844254166ea32c8ae11c211b3639a293fdde41b1645b6be2c62"
+
+[[package]]
 name = "bumpalo"
 version = "3.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1039,6 +1045,7 @@ checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
 name = "rexec"
 version = "0.1.0"
 dependencies = [
+ "brace-expand",
  "clap 4.3.4",
  "colored",
  "dialoguer",

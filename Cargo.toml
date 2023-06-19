@@ -17,3 +17,4 @@ clap = { version = "4.3.4", features = ["derive"] }
 colored = "2.0.0"
 dialoguer = "0.10.4"
 itertools = "0.10.5"
+brace-expand = "0.1.0"
