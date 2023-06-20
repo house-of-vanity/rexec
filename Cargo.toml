@@ -2,6 +2,12 @@
 name = "rexec"
 version = "1.0.1"
 edition = "2021"
+description = "Parallel SSH executor"
+repository = "https://github.com/house-of-vanity/rexec"
+homepage = "https://github.com/house-of-vanity/rexec"
+license = "WTFPL"
+categories = ["command-line-utilities"]
+authors = ["AB <gh@hexor.ru>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
