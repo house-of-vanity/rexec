@@ -43,7 +43,9 @@ jobs:
         toolchain: stable
         override: true
         target: x86_64-unknown-linux-musl
-        components: cargo-aur
+        components: rustfmt
+    - name: Install cargo-aur
+      run: cargo install cargo-aur
     - name: Build PKGBUILD
       uses: actions-rs/cargo@v1
       with:
