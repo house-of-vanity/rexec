@@ -43,6 +43,6 @@ jobs:
     - uses: ncipollo/release-action@v1
       name: Update release page
       with:
-        artifacts: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
+        artifacts: ${{ env.BINARY_NAME }}_x86_64-linux-musl
         allowUpdates: true
         body: Static build for x86_64-linux using MUSL
