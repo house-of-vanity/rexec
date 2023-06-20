@@ -1,8 +1,13 @@
 name: Rust-static-build-musl
+#on:
+#  push:
+#    branches: [ master ]
+#  pull_request:
+#    branches: [ master ]
 on:
   push:
     tags:
-      - '*'
+    - '*'
 env:
   CARGO_TERM_COLOR: always
   BUILD_TARGET: x86_64-unknown-linux-musl
@@ -10,23 +15,19 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - name: Wait for tests to succeed
-      uses: lewagon/wait-on-check-action@v1.3.1
+    - uses: actions/checkout@v3
+    - name: Build-musl
+      uses: gmiam/rust-musl-action@master
       with:
-        ref: ${{ github.ref }}
-        check-name: 'Upload artifact'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        wait-interval: 10
-    - uses: actions/checkout@master
-    - name: Create release
-      uses: Roang-zero1/github-create-release-action@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Upload release artifacts
-      uses: Roang-zero1/github-upload-release-artifacts-action@v2
+        args: cargo build --target $BUILD_TARGET --release
+    - uses: actions/upload-artifact@v2
+      name: Upload artifact
       with:
-        args: "rexec"
-        bodyFile: CHANGES.md
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: ${{ env.BINARY_NAME }}
+        path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
