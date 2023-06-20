@@ -50,7 +50,7 @@ jobs:
       with:
         command: aur
     - name: Build archlinux package
-      uses: mijailr/arch-makepkg-action@v1
+      uses: mijailr/arch-makepkg-action@1.0.1
     - uses: actions/upload-artifact@v2
       name: Upload artifact PKGBUILD
       with:
