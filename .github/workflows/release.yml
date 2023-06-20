@@ -30,7 +30,7 @@ jobs:
           path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
 
   build_arch:
-    name: Build Arch Linux package
+    name: Arch Linux package
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,11 +49,16 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: aur
+    - name: Build archlinux package
+      uses: mijailr/arch-makepkg-action@v1
     - uses: actions/upload-artifact@v2
-      name: Upload artifact
+      name: Upload artifact PKGBUILD
       with:
-        name: PKGBUILD
-        path: PKGBUILD
+          path: PKGBUILD
+    - uses: actions/upload-artifact@v2
+      name: Upload artifact Package
+      with:
+        path: .*\.zst
 
 
 
