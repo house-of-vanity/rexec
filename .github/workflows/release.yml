@@ -13,25 +13,30 @@ env:
   BUILD_TARGET: x86_64-unknown-linux-musl
   BINARY_NAME: rexec
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mbrobbel/rustfmt-check@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build-musl
+        uses: gmiam/rust-musl-action@master
+        with:
+          args: cargo build --target $BUILD_TARGET --release
   release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@stable
-    - uses: mbrobbel/rustfmt-check@master
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build-musl
-      uses: gmiam/rust-musl-action@master
-      with:
-        args: cargo build --target $BUILD_TARGET --release
-    - name: Compress binaries
-      uses: svenstaro/upx-action@v2
-      with:
-        files: |
-          target/x86_64-unknown-linux-musl/release/*
+#    - name: Compress binaries
+#      uses: svenstaro/upx-action@v2
+#      with:
+#        files: |
+#          target/x86_64-unknown-linux-musl/release/*
     - uses: actions/upload-artifact@v2
       name: Upload artifact
       with:
