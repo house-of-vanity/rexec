@@ -29,42 +29,35 @@ jobs:
           name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
           path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
 
-  build_arch:
-    name: Arch Linux package
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install latest nightly
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        target: x86_64-unknown-linux-musl
-        components: rustfmt
-    - name: Install cargo-aur
-      run: cargo install cargo-aur
-    - name: Build PKGBUILD
-      uses: actions-rs/cargo@v1
-      with:
-        command: aur
-    - name: Build archlinux package
-      uses: mijailr/arch-makepkg-action@1.0.1
-    - uses: actions/upload-artifact@v2
-      name: Upload artifact PKGBUILD
-      with:
-          path: PKGBUILD
-    - uses: actions/upload-artifact@v2
-      name: Upload artifact Package
-      with:
-        path: .*\.zst
-
-
+#  build_arch:
+#    name: Arch Linux package
+#    runs-on: ubuntu-latest
+#    permissions:
+#      contents: write
+#    steps:
+#    - uses: actions/checkout@v3
+#    - name: Install latest nightly
+#      uses: actions-rs/toolchain@v1
+#      with:
+#        toolchain: stable
+#        override: true
+#        target: x86_64-unknown-linux-musl
+#        components: rustfmt
+#    - name: Install cargo-aur
+#      run: cargo install cargo-aur
+#    - name: Build PKGBUILD
+#      uses: actions-rs/cargo@v1
+#      with:
+#        command: aur
+#    - uses: actions/upload-artifact@v2
+#      name: Upload artifact PKGBUILD
+#      with:
+#          path: PKGBUILD
+#          name: PKGBUILD
 
   release:
     name: Release binary
-    needs: ["build", "build_arch"]
+    needs: ["build"]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -74,14 +67,14 @@ jobs:
       with:
         name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
         path: ${{ env.BINARY_NAME }}_x86_64-linux-musl
-    - uses: actions/download-artifact@master
-      id: download_pkgbuild
-      with:
-        name: PKGBUILD
-        path: PKGBUILD
+#    - uses: actions/download-artifact@master
+#      id: download_pkgbuild
+#      with:
+#        name: PKGBUILD
+#        path: PKGBUILD
     - uses: ncipollo/release-action@v1
       name: Update release page
       with:
-        artifacts: "${{ steps.download_pkgbuild.outputs.download-path }}/*,${{ steps.download_binary.outputs.download-path }}/*"
+        artifacts: "${{ steps.download_binary.outputs.download-path }}/*"
         allowUpdates: true
         body: Static build for x86_64-linux using MUSL
