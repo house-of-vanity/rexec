@@ -19,6 +19,10 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: mbrobbel/rustfmt-check@master
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Build-musl
       uses: gmiam/rust-musl-action@master
       with:
@@ -27,11 +31,15 @@ jobs:
       name: Upload artifact
       with:
         name: ${{ env.BINARY_NAME }}
-        path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
-#    - name: Strip binary
-#      run: strip target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
-    - uses: ncipollo/release-action@v1
+        path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
+    - name: Compress binaries
+      uses: svenstaro/upx-action@v2
       with:
-        artifacts: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
+        files: |
+          target/x86_64-unknown-linux-musl/release/*
+    - uses: ncipollo/release-action@v1
+      name: Update release page
+      with:
+        artifacts: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
         allowUpdates: true
         body: Static build for x86_64-linux using MUSL
