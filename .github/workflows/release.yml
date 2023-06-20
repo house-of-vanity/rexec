@@ -9,7 +9,7 @@ env:
   BINARY_NAME: rexec
 jobs:
   build:
-    name: Build static binary ${{ env.BINARY_NAME }}
+    name: Build static binary
     runs-on: ubuntu-latest
     permissions:
       contents: write
