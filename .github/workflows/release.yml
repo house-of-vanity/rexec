@@ -37,12 +37,13 @@ jobs:
       contents: write
     steps:
     - uses: actions/download-artifact@master
+      id: download
       with:
         name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
         path: ${{ env.BINARY_NAME }}_x86_64-linux-musl
     - uses: ncipollo/release-action@v1
       name: Update release page
       with:
-        artifacts: ${{ env.BINARY_NAME }}_x86_64-linux-musl
+        artifacts: ${{ steps.download.outputs.download-path }}
         allowUpdates: true
         body: Static build for x86_64-linux using MUSL
