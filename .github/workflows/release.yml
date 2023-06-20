@@ -1,9 +1,4 @@
-name: Rust-static-build-musl
-#on:
-#  push:
-#    branches: [ master ]
-#  pull_request:
-#    branches: [ master ]
+name: Rust static build and publish
 on:
   push:
     tags:
@@ -28,6 +23,12 @@ jobs:
         uses: gmiam/rust-musl-action@master
         with:
           args: cargo build --target $BUILD_TARGET --release
+      - uses: actions/upload-artifact@v2
+        name: Upload artifact
+        with:
+          name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
+          path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
+
   release:
     name: Release binary
     needs: build
@@ -35,11 +36,10 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/upload-artifact@v2
-      name: Upload artifact
+    - uses: actions/download-artifact@master
       with:
-        name: ${{ env.BINARY_NAME }}
-        path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
+        name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
+        path: ${{ env.BINARY_NAME }}_x86_64-linux-musl
     - uses: ncipollo/release-action@v1
       name: Update release page
       with:
