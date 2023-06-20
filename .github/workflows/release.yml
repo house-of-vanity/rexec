@@ -28,8 +28,8 @@ jobs:
       with:
         name: ${{ env.BINARY_NAME }}
         path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
-    - name: Strip binary
-      run: strip target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
+#    - name: Strip binary
+#      run: strip target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
     - uses: ncipollo/release-action@v1
       with:
         artifacts: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}*
