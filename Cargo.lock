@@ -1043,17 +1043,17 @@ checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
 
 [[package]]
 name = "rexec"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
- "brace-expand",
- "clap 4.3.4",
- "colored",
- "dialoguer",
- "dns-lookup",
- "env_logger",
- "itertools",
- "lazy-st",
- "log",
+    "brace-expand",
+    "clap 4.3.4",
+    "colored",
+    "dialoguer",
+    "dns-lookup",
+    "env_logger",
+    "itertools",
+    "lazy-st",
+    "log",
  "massh",
  "regex",
  "whoami",

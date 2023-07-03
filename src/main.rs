@@ -1,4 +1,13 @@
-use brace_expand::brace_expand;
+#[macro_use]
+extern crate log;
+
+use std::collections::HashMap;
+use std::fs::read_to_string;
+use std::hash::Hash;
+use std::net::IpAddr;
+use std::process;
+
+use clap::Parser;
 use colored::*;
 use dialoguer::Confirm;
 use dns_lookup::lookup_host;
@@ -7,17 +16,7 @@ use itertools::Itertools;
 use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use regex::Regex;
-use std::collections::HashMap;
-use std::fs::read_to_string;
-use std::hash::Hash;
-use std::net::IpAddr;
 
-use std::process;
-
-#[macro_use]
-extern crate log;
-
-use clap::Parser;
 
 // Define args
 #[derive(Parser, Debug)]
@@ -29,7 +28,7 @@ struct Args {
     #[arg(short, long, help = "Use known_hosts to build servers list")]
     known_hosts: bool,
 
-    #[arg(short, long, help = "Expression to build server list")]
+    #[arg(short, long, help = "Expression to build server list. List and range expansion available. Example: 'web-[1:12]-io-{prod,dev}'")]
     expression: String,
 
     #[arg(short, long, help = "Command to execute on servers")]
