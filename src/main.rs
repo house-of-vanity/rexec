@@ -17,7 +17,6 @@ use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use regex::Regex;
 
-
 // Define args
 #[derive(Parser, Debug)]
 #[command(author = "AB ab@hexor.ru", version, about = "Parallel SSH executor in Rust", long_about = None)]
@@ -28,7 +27,11 @@ struct Args {
     #[arg(short, long, help = "Use known_hosts to build servers list")]
     known_hosts: bool,
 
-    #[arg(short, long, help = "Expression to build server list. List and range expansion available. Example: 'web-[1:12]-io-{prod,dev}'")]
+    #[arg(
+        short,
+        long,
+        help = "Expression to build server list. List and range expansion available. Example: 'web-[1:12]-io-{prod,dev}'"
+    )]
     expression: String,
 
     #[arg(short, long, help = "Command to execute on servers")]
