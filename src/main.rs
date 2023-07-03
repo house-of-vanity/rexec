@@ -75,16 +75,58 @@ fn read_known_hosts() -> Vec<Host> {
     result
 }
 
-fn expand_expression(expr: &str) -> Vec<Host> {
-    let mut result: Vec<Host> = Vec::new();
+fn expand_string(string: String) -> Vec<Host> {
+    let mut result: Vec<String> = Vec::new();
+    let mut _result: Vec<String> = Vec::new();
+    let mut hosts: Vec<Host> = Vec::new();
 
-    for hostname in brace_expand(expr) {
-        result.push(Host {
+    if let Some(open_bracket_index) = string.find('[') {
+        if let Some(close_bracket_index) = string.find(']') {
+            let prefix = &string[..open_bracket_index];
+            let range = &string[open_bracket_index + 1..close_bracket_index];
+            let postfix = &string[close_bracket_index + 1..];
+
+            let parts: Vec<&str> = range.split(':').collect();
+
+            if parts.len() == 2 {
+                if let Ok(start) = parts[0].parse::<u32>() {
+                    if let Ok(end) = parts[1].parse::<u32>() {
+                        for num in start..=end {
+                            _result.push(format!("{}{}{}", prefix, num, postfix));
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        _result.push(String::from(string));
+    }
+
+    for string in _result {
+        if let Some(open_brace_index) = string.find('{') {
+            if let Some(close_brace_index) = string.find('}') {
+                let prefix = &string[..open_brace_index];
+                let list = &string[open_brace_index + 1..close_brace_index];
+                let postfix = &string[close_brace_index + 1..];
+
+                let items: Vec<&str> = list.split(',').collect();
+
+                for item in items {
+                    result.push(format!("{}{}{}", prefix, item, postfix));
+                }
+            }
+        } else {
+            result.push(String::from(string));
+        }
+    }
+
+    for hostname in result {
+        hosts.push(Host {
             name: hostname.to_string(),
             ip: None,
         })
     }
-    result
+    hosts
 }
 
 fn main() {
@@ -112,7 +154,7 @@ fn main() {
             .collect()
     } else {
         info!("Using string expansion to build server list.");
-        expand_expression(&args.expression)
+        expand_string(args.expression)
     };
 
     // Dedup hosts from known_hosts file
