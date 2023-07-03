@@ -17,7 +17,6 @@ use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use regex::Regex;
 
-
 // Define args
 #[derive(Parser, Debug)]
 #[command(author = "AB ab@hexor.ru", version, about = "Parallel SSH executor in Rust", long_about = None)]
@@ -28,7 +27,11 @@ struct Args {
     #[arg(short, long, help = "Use known_hosts to build servers list")]
     known_hosts: bool,
 
-    #[arg(short, long, help = "Expression to build server list. List and range expansion available. Example: 'web-[1:12]-io-{prod,dev}'")]
+    #[arg(
+        short,
+        long,
+        help = "Expression to build server list. List and range expansion available. Example: 'web-[1:12]-io-{prod,dev}'"
+    )]
     expression: String,
 
     #[arg(short, long, help = "Command to execute on servers")]
@@ -74,50 +77,64 @@ fn read_known_hosts() -> Vec<Host> {
     result
 }
 
-fn expand_string(string: String) -> Vec<Host> {
-    let mut result: Vec<String> = Vec::new();
-    let mut _result: Vec<String> = Vec::new();
+fn expand_string(string: &str) -> Vec<Host> {
     let mut hosts: Vec<Host> = Vec::new();
 
-    if let Some(open_bracket_index) = string.find('[') {
-        if let Some(close_bracket_index) = string.find(']') {
-            let prefix = &string[..open_bracket_index];
-            let range = &string[open_bracket_index + 1..close_bracket_index];
-            let postfix = &string[close_bracket_index + 1..];
+    // Bracket expansion
+    let mut parts: Vec<&str> = string.split('[').collect();
+    let mut expanded_brackets: Vec<String> = vec![parts[0].to_string()];
 
-            let parts: Vec<&str> = range.split(':').collect();
+    for part in parts[1..].iter() {
+        let mut split = part.splitn(2, ']');
+        let range_string = split.next().unwrap();
+        let suffix = split.next().unwrap();
 
-            if parts.len() == 2 {
-                if let Ok(start) = parts[0].parse::<u32>() {
-                    if let Ok(end) = parts[1].parse::<u32>() {
-                        for num in start..=end {
-                            _result.push(format!("{}{}{}", prefix, num, postfix));
-                        }
+        let mut range_parts = range_string.split(':');
+        let range_start: usize = range_parts.next().unwrap().parse().unwrap();
+        let range_end: usize = range_parts.next().unwrap_or(range_string).parse().unwrap();
+
+        expanded_brackets = expanded_brackets
+            .into_iter()
+            .flat_map(|s| (range_start..=range_end).map(move |i| format!("{}{}{}", s, i, suffix)))
+            .collect();
+    }
+
+
+    // Brace expansion
+    let mut result: Vec<String> = Vec::new();
+
+
+        let mut expanded_strings: Vec<String> = vec![String::from(string)];
+
+        while let Some(open_brace_index) = expanded_strings
+            .iter()
+            .find(|s| s.contains('{'))
+            .and_then(|s| s.find('{'))
+        {
+            let mut new_expanded_strings: Vec<String> = Vec::new();
+
+            for exp_string in expanded_strings {
+                if let Some(close_brace_index) = exp_string[open_brace_index..].find('}') {
+                    let prefix = &exp_string[..open_brace_index];
+                    let list = &exp_string[open_brace_index + 1..open_brace_index + close_brace_index];
+                    let postfix = &exp_string[open_brace_index + close_brace_index + 1..];
+
+                    let items: Vec<&str> = list.split(',').collect();
+
+                    for item in items {
+                        let new_exp_string = format!("{}{}{}", prefix, item, postfix);
+                        new_expanded_strings.push(new_exp_string);
                     }
                 }
             }
+
+            expanded_strings = new_expanded_strings;
         }
-    } else {
-        _result.push(String::from(string));
-    }
 
-    for string in _result {
-        if let Some(open_brace_index) = string.find('{') {
-            if let Some(close_brace_index) = string.find('}') {
-                let prefix = &string[..open_brace_index];
-                let list = &string[open_brace_index + 1..close_brace_index];
-                let postfix = &string[close_brace_index + 1..];
+        result.extend(expanded_strings);
+        result.extend(expanded_brackets);
 
-                let items: Vec<&str> = list.split(',').collect();
 
-                for item in items {
-                    result.push(format!("{}{}{}", prefix, item, postfix));
-                }
-            }
-        } else {
-            result.push(String::from(string));
-        }
-    }
 
     for hostname in result {
         hosts.push(Host {
@@ -126,6 +143,41 @@ fn expand_string(string: String) -> Vec<Host> {
         })
     }
     hosts
+}
+
+fn _expand_strings(string: &str) -> Vec<String> {
+    let mut result: Vec<String> = Vec::new();
+
+    let mut expanded_strings: Vec<String> = vec![String::from(string)];
+
+    while let Some(open_brace_index) = expanded_strings
+        .iter()
+        .find(|s| s.contains('{'))
+        .and_then(|s| s.find('{'))
+    {
+        let mut new_expanded_strings: Vec<String> = Vec::new();
+
+        for exp_string in expanded_strings {
+            if let Some(close_brace_index) = exp_string[open_brace_index..].find('}') {
+                let prefix = &exp_string[..open_brace_index];
+                let list = &exp_string[open_brace_index + 1..open_brace_index + close_brace_index];
+                let postfix = &exp_string[open_brace_index + close_brace_index + 1..];
+
+                let items: Vec<&str> = list.split(',').collect();
+
+                for item in items {
+                    let new_exp_string = format!("{}{}{}", prefix, item, postfix);
+                    new_expanded_strings.push(new_exp_string);
+                }
+            }
+        }
+
+        expanded_strings = new_expanded_strings;
+    }
+
+    result.extend(expanded_strings);
+
+    result
 }
 
 fn main() {
@@ -153,7 +205,7 @@ fn main() {
             .collect()
     } else {
         info!("Using string expansion to build server list.");
-        expand_string(args.expression)
+        expand_string(&args.expression)
     };
 
     // Dedup hosts from known_hosts file
