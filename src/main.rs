@@ -124,8 +124,8 @@ fn expand_string(s: &str) -> Vec<Host> {
     hosts
 }
 
-
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
         .format_timestamp(None)
         .format_target(false)
@@ -242,4 +242,5 @@ fn main() {
     } else {
         warn!("Stopped");
     }
+    Ok(())
 }
