@@ -77,64 +77,43 @@ fn read_known_hosts() -> Vec<Host> {
     result
 }
 
-fn expand_string(string: &str) -> Vec<Host> {
+fn expand_range(start: i32, end: i32) -> Vec<String> {
+    (start..=end).map(|i| i.to_string()).collect()
+}
+
+fn expand_list(list: &str) -> Vec<String> {
+    list.split(',').map(|s| s.to_string()).collect()
+}
+
+fn expand_string(s: &str) -> Vec<Host> {
     let mut hosts: Vec<Host> = Vec::new();
+    let mut result = vec![s.to_string()];
 
-    // Bracket expansion
-    let mut parts: Vec<&str> = string.split('[').collect();
-    let mut expanded_brackets: Vec<String> = vec![parts[0].to_string()];
-
-    for part in parts[1..].iter() {
-        let mut split = part.splitn(2, ']');
-        let range_string = split.next().unwrap();
-        let suffix = split.next().unwrap();
-
-        let mut range_parts = range_string.split(':');
-        let range_start: usize = range_parts.next().unwrap().parse().unwrap();
-        let range_end: usize = range_parts.next().unwrap_or(range_string).parse().unwrap();
-
-        expanded_brackets = expanded_brackets
-            .into_iter()
-            .flat_map(|s| (range_start..=range_end).map(move |i| format!("{}{}{}", s, i, suffix)))
-            .collect();
+    while let Some(r) = result.iter().find(|s| s.contains('[')) {
+        let r = r.clone();
+        let start = r.find('[').unwrap();
+        let end = r.find(']').unwrap();
+        let colon = r.find(':').unwrap();
+        let low = r[start+1..colon].parse::<i32>().unwrap();
+        let high = r[colon+1..end].parse::<i32>().unwrap();
+        result.retain(|s| s != &r);
+        for val in expand_range(low, high) {
+            let new_str = format!("{}{}{}", &r[..start], val, &r[end+1..]);
+            result.push(new_str);
+        }
     }
 
-
-    // Brace expansion
-    let mut result: Vec<String> = Vec::new();
-
-
-        let mut expanded_strings: Vec<String> = vec![String::from(string)];
-
-        while let Some(open_brace_index) = expanded_strings
-            .iter()
-            .find(|s| s.contains('{'))
-            .and_then(|s| s.find('{'))
-        {
-            let mut new_expanded_strings: Vec<String> = Vec::new();
-
-            for exp_string in expanded_strings {
-                if let Some(close_brace_index) = exp_string[open_brace_index..].find('}') {
-                    let prefix = &exp_string[..open_brace_index];
-                    let list = &exp_string[open_brace_index + 1..open_brace_index + close_brace_index];
-                    let postfix = &exp_string[open_brace_index + close_brace_index + 1..];
-
-                    let items: Vec<&str> = list.split(',').collect();
-
-                    for item in items {
-                        let new_exp_string = format!("{}{}{}", prefix, item, postfix);
-                        new_expanded_strings.push(new_exp_string);
-                    }
-                }
-            }
-
-            expanded_strings = new_expanded_strings;
+    while let Some(r) = result.iter().find(|s| s.contains('{')) {
+        let r = r.clone();
+        let start = r.find('{').unwrap();
+        let end = r.find('}').unwrap();
+        let list = &r[start+1..end];
+        result.retain(|s| s != &r);
+        for val in expand_list(list) {
+            let new_str = format!("{}{}{}", &r[..start], val, &r[end+1..]);
+            result.push(new_str);
         }
-
-        result.extend(expanded_strings);
-        result.extend(expanded_brackets);
-
-
+    }
 
     for hostname in result {
         hosts.push(Host {
@@ -145,40 +124,6 @@ fn expand_string(string: &str) -> Vec<Host> {
     hosts
 }
 
-fn _expand_strings(string: &str) -> Vec<String> {
-    let mut result: Vec<String> = Vec::new();
-
-    let mut expanded_strings: Vec<String> = vec![String::from(string)];
-
-    while let Some(open_brace_index) = expanded_strings
-        .iter()
-        .find(|s| s.contains('{'))
-        .and_then(|s| s.find('{'))
-    {
-        let mut new_expanded_strings: Vec<String> = Vec::new();
-
-        for exp_string in expanded_strings {
-            if let Some(close_brace_index) = exp_string[open_brace_index..].find('}') {
-                let prefix = &exp_string[..open_brace_index];
-                let list = &exp_string[open_brace_index + 1..open_brace_index + close_brace_index];
-                let postfix = &exp_string[open_brace_index + close_brace_index + 1..];
-
-                let items: Vec<&str> = list.split(',').collect();
-
-                for item in items {
-                    let new_exp_string = format!("{}{}{}", prefix, item, postfix);
-                    new_expanded_strings.push(new_exp_string);
-                }
-            }
-        }
-
-        expanded_strings = new_expanded_strings;
-    }
-
-    result.extend(expanded_strings);
-
-    result
-}
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
