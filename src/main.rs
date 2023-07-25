@@ -94,11 +94,11 @@ fn expand_string(s: &str) -> Vec<Host> {
         let start = r.find('[').unwrap();
         let end = r.find(']').unwrap();
         let colon = r.find(':').unwrap();
-        let low = r[start+1..colon].parse::<i32>().unwrap();
-        let high = r[colon+1..end].parse::<i32>().unwrap();
+        let low = r[start + 1..colon].parse::<i32>().unwrap();
+        let high = r[colon + 1..end].parse::<i32>().unwrap();
         result.retain(|s| s != &r);
         for val in expand_range(low, high) {
-            let new_str = format!("{}{}{}", &r[..start], val, &r[end+1..]);
+            let new_str = format!("{}{}{}", &r[..start], val, &r[end + 1..]);
             result.push(new_str);
         }
     }
@@ -107,10 +107,10 @@ fn expand_string(s: &str) -> Vec<Host> {
         let r = r.clone();
         let start = r.find('{').unwrap();
         let end = r.find('}').unwrap();
-        let list = &r[start+1..end];
+        let list = &r[start + 1..end];
         result.retain(|s| s != &r);
         for val in expand_list(list) {
-            let new_str = format!("{}{}{}", &r[..start], val, &r[end+1..]);
+            let new_str = format!("{}{}{}", &r[..start], val, &r[end + 1..]);
             result.push(new_str);
         }
     }
@@ -123,7 +123,6 @@ fn expand_string(s: &str) -> Vec<Host> {
     }
     hosts
 }
-
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
