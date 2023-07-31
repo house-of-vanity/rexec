@@ -91,8 +91,14 @@ fn expand_string(s: &str) -> Vec<Host> {
 
     while let Some(r) = result.iter().find(|s| s.contains('[')) {
         let r = r.clone();
-        let start = r.find('[').unwrap();
-        let end = r.find(']').unwrap();
+        let start = r.find(']').unwrap();
+        let end = match r.find(']') {
+            None => {
+                error!("Error parsing host expression. Wrong range expansion '[a:b]'");
+                process::exit(1);
+            }
+            Some(s) => s
+        };
         let colon = r.find(':').unwrap();
         let low = r[start+1..colon].parse::<i32>().unwrap();
         let high = r[colon+1..end].parse::<i32>().unwrap();
@@ -106,7 +112,13 @@ fn expand_string(s: &str) -> Vec<Host> {
     while let Some(r) = result.iter().find(|s| s.contains('{')) {
         let r = r.clone();
         let start = r.find('{').unwrap();
-        let end = r.find('}').unwrap();
+        let end = match r.find('}') {
+            None => {
+                error!("Error parsing host expression. Wrong range expansion '{{one,two}}'");
+                process::exit(1);
+            }
+            Some(s) => s
+        };
         let list = &r[start+1..end];
         result.retain(|s| s != &r);
         for val in expand_list(list) {
