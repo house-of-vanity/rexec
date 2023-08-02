@@ -24,13 +24,13 @@ struct Args {
     #[arg(short, long, default_value_t = whoami::username())]
     username: String,
 
-    #[arg(short, long, help = "Use known_hosts to build servers list")]
+    #[arg(short, long, help = "Use known_hosts to build servers list instead of string expansion.")]
     known_hosts: bool,
 
     #[arg(
         short,
         long,
-        help = "Expression to build server list. List and range expansion available. Example: 'web-[1:12]-io-{prod,dev}'"
+        help = "Expression to build server list. List and range expansion are supported. Example: 'web-[1:12]-io-{prod,dev}'"
     )]
     expression: String,
 
@@ -171,6 +171,10 @@ fn main() {
     // Build MasshHostConfig hostnames list
     let mut massh_hosts: Vec<MasshHostConfig> = vec![];
     let mut hosts_and_ips: HashMap<IpAddr, String> = HashMap::new();
+    if args.parallel != 100 {
+        warn!("Parallelism: {} thread{}", &args.parallel, {if args.parallel != 1 {"s."} else {"."}});
+    }
+
     info!("Matched hosts:");
     for host in matched_hosts.iter() {
         let ip = match lookup_host(&host.name) {
