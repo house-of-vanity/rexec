@@ -24,7 +24,11 @@ struct Args {
     #[arg(short, long, default_value_t = whoami::username())]
     username: String,
 
-    #[arg(short, long, help = "Use known_hosts to build servers list instead of string expansion.")]
+    #[arg(
+        short,
+        long,
+        help = "Use known_hosts to build servers list instead of string expansion."
+    )]
     known_hosts: bool,
 
     #[arg(
@@ -91,20 +95,26 @@ fn expand_string(s: &str) -> Vec<Host> {
 
     while let Some(r) = result.iter().find(|s| s.contains('[')) {
         let r = r.clone();
-        let start = r.find(']').unwrap();
-        let end = match r.find(']') {
+        let start = r.find('[').unwrap();
+        let end = match r[start..].find(']') {
             None => {
                 error!("Error parsing host expression. Wrong range expansion '[a:b]'");
                 process::exit(1);
             }
-            Some(s) => s
+            Some(s) => s + start,
         };
-        let colon = r.find(':').unwrap();
-        let low = r[start+1..colon].parse::<i32>().unwrap();
-        let high = r[colon+1..end].parse::<i32>().unwrap();
+        let colon = match r[start..end].find(':') {
+            None => {
+                error!("Error parsing host expression. Missing colon in range expansion '[a:b]'");
+                process::exit(1);
+            }
+            Some(c) => c + start,
+        };
+        let low = r[start + 1..colon].parse::<i32>().unwrap();
+        let high = r[colon + 1..end].parse::<i32>().unwrap();
         result.retain(|s| s != &r);
         for val in expand_range(low, high) {
-            let new_str = format!("{}{}{}", &r[..start], val, &r[end+1..]);
+            let new_str = format!("{}{}{}", &r[..start], val, &r[end + 1..]);
             result.push(new_str);
         }
     }
@@ -117,12 +127,12 @@ fn expand_string(s: &str) -> Vec<Host> {
                 error!("Error parsing host expression. Wrong range expansion '{{one,two}}'");
                 process::exit(1);
             }
-            Some(s) => s
+            Some(s) => s,
         };
-        let list = &r[start+1..end];
+        let list = &r[start + 1..end];
         result.retain(|s| s != &r);
         for val in expand_list(list) {
-            let new_str = format!("{}{}{}", &r[..start], val, &r[end+1..]);
+            let new_str = format!("{}{}{}", &r[..start], val, &r[end + 1..]);
             result.push(new_str);
         }
     }
@@ -135,7 +145,6 @@ fn expand_string(s: &str) -> Vec<Host> {
     }
     hosts
 }
-
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
@@ -172,7 +181,13 @@ fn main() {
     let mut massh_hosts: Vec<MasshHostConfig> = vec![];
     let mut hosts_and_ips: HashMap<IpAddr, String> = HashMap::new();
     if args.parallel != 100 {
-        warn!("Parallelism: {} thread{}", &args.parallel, {if args.parallel != 1 {"s."} else {"."}});
+        warn!("Parallelism: {} thread{}", &args.parallel, {
+            if args.parallel != 1 {
+                "s."
+            } else {
+                "."
+            }
+        });
     }
 
     info!("Matched hosts:");
