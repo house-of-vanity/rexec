@@ -9,12 +9,13 @@ use std::process;
 
 use clap::Parser;
 use colored::*;
-use dialoguer::Confirm;
+//use dialoguer::Confirm;
 use dns_lookup::lookup_host;
 use env_logger::Env;
 use itertools::Itertools;
 use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
+use question::{Answer, Question};
 use regex::Regex;
 
 // Define args
@@ -220,14 +221,18 @@ fn main() {
     let massh = MasshClient::from(&config);
 
     // Ask for confirmation
-    if args.noconfirm == true
-        || Confirm::new()
-            .with_prompt(format!(
-                "Continue on following {} servers?",
-                &config.hosts.len()
-            ))
-            .interact()
-            .unwrap()
+    if config.hosts.len() != 0
+        && (args.noconfirm == true
+        || match Question::new(&*format!(
+            "Continue on following {} servers?",
+            &config.hosts.len()
+        ))
+        .confirm()
+        {
+            Answer::YES => true,
+            Answer::NO => false,
+            _ => unreachable!(),
+        })
     {
         info!("\n");
         info!("Run command on {} servers.", &config.hosts.len());
