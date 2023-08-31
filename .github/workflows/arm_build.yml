@@ -27,7 +27,7 @@ jobs:
         run: |
           pacman -Syu --noconfirm rustup musl
           rustup target add x86_64-unknown-linux-musl
-          cargo build --target ${{ BUILD_TARGET }} --release
+          cargo build --target ${{ env.BUILD_TARGET }} --release
           
       - name: Get version
         run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
