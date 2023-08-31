@@ -68,7 +68,9 @@ jobs:
 
   release:
     name: Release binary
-    needs: ["build" "build_arch"]
+    needs:
+      - build
+      - build_arch
     runs-on: ubuntu-latest
     permissions:
       contents: write
