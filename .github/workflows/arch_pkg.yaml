@@ -10,7 +10,7 @@ jobs:
      runs-on: ubuntu-latest
      container:
        image: archlinux:base-devel
-       options: --user build
+       options: --user 1001
      permissions:
        contents: write
      steps:
