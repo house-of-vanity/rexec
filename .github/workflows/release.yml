@@ -28,7 +28,20 @@ jobs:
         with:
           name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
           path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
-
+  build_arch:
+    name: Arch Linux package
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+      options: --user 1001
+    permissions:
+      contents: write
+    steps:
+    - name: Install build deps
+      run: |
+        pacman -Syu --noconfirm rustup musl git tree
+        tree -L 3
+        makepkg -f
 
 # release:
 #   name: Release binary
