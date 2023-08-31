@@ -23,18 +23,21 @@ jobs:
         target: x86_64-unknown-linux-musl
         components: rustfmt
     - name: Install build deps
-      run: pacman -Syu --noconfirm rustup musl git base-devel sudo
+      run: |
+        pacman -Syu --noconfirm rustup musl git base-devel
+        rustup target add ${{ env.BUILD_TARGET }}
     - name: Makepkg Build and Check
       id: makepkg
       uses: edlanglois/pkgbuild-action@v1.1.8
-    - name: Print Package Files
-      run: |
-        echo "Successfully created the following package archive"
-        echo "Package: ${{ steps.makepkg.outputs.pkgfile0 }}"
 #   - name: Build ZST package
 #     run: |
 #       useradd -G wheel -d /rexec/ -s /bin/bash build
 #       makepkg -f
+    - name: LIST
+      run: |
+        pwd
+        ls -lah
+
     - uses: actions/upload-artifact@v2
       name: Upload ZST package
       with:

@@ -6,7 +6,7 @@ pkgdesc="Parallel SSH executor"
 url="https://github.com/house-of-vanity/rexec"
 license=("WTFPL")
 arch=("x86_64")
-makedepends=("cargo")
+makedepends=("rustup")
 
 pkgver() {
     echo "$pkgver" | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
