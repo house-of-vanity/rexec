@@ -26,3 +26,4 @@ colored = "2.0.0"
 itertools = "0.10.5"
 brace-expand = "0.1.0"
 question = "0.2.2"
+openssl = { version = "0.10", features = ["vendored"] }
