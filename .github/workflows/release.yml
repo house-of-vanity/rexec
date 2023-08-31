@@ -37,13 +37,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
-      - name: Install build deps
-	run: |
-	  #pacman -Syu --noconfirm rustup musl git tree
-	  ls -lah
-	  makepkg -f
-	  ls -lah
+    - uses: actions/checkout@v3
+    - name: Install build deps
+      run: |
+        #pacman -Syu --noconfirm rustup musl git tree
+        ls -lah
+        makepkg -f
+        ls -lah
 
 # release:
 #   name: Release binary
