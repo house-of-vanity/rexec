@@ -67,7 +67,7 @@ jobs:
 
 
   release:
-    name: Release binary
+    name: Making New Release ^_^
     needs:
       - build
       - build_arch
