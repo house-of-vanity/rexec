@@ -9,7 +9,8 @@ jobs:
      name: Arch Linux package
      runs-on: ubuntu-latest
      container:
-       image: archlinux
+       image: archlinux:base-devel
+       options: --user build
      permissions:
        contents: write
      steps:
@@ -22,9 +23,11 @@ jobs:
          target: x86_64-unknown-linux-musl
          components: rustfmt
      - name: Install build deps
-       run: pacman -Syu --noconfirm rustup musl git
+       run: pacman -Syu --noconfirm rustup musl git base-devel sudo
      - name: Build ZST package
-       run: makepkg -f
+       run: |
+         useradd -G wheel -d /rexec/ -s /bin/bash build
+         makepkg -f
      - uses: actions/upload-artifact@v2
        name: Upload ZST package
        with:
