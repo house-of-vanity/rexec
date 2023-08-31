@@ -31,6 +31,7 @@ jobs:
   build_arch:
     name: Arch Linux package
     runs-on: ubuntu-latest
+    needs: ["build"]
     container:
       image: archlinux:base-devel
       options: --user 1001
@@ -38,6 +39,11 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@v3
+    - uses: actions/download-artifact@master
+      id: download_binary
+      with:
+        name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
+        path: ${{ env.BINARY_NAME }}_x86_64-linux-musl
     - name: Install build deps
       run: |
         #pacman -Syu --noconfirm rustup musl git tree
