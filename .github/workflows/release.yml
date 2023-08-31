@@ -43,11 +43,11 @@ jobs:
       id: download_binary
       with:
         name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
-        path: ${{ env.BINARY_NAME }}_x86_64-linux-musl
+        path: target/x86_64-unknown-linux-musl/release/rexec
     - name: Install build deps
       run: |
         #pacman -Syu --noconfirm rustup musl git tree
-        ls -lah ${{ env.BINARY_NAME }}_x86_64-linux-musl
+        ls -lah 
         makepkg -f
         ls -lah
 
