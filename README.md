@@ -12,7 +12,7 @@ or even expand servers from bash expanshion line `cassandra-[1:5].{prod,dev}.exa
  _|         _|_|_|_|   _|      _|   _|_|_|_|     _|_|_|  
                                                         
 
-[ab@test]$ ./rexec -k admin-gce-sc.* --help
+[ab@test]$ rexec --help
 Parallel SSH executor in Rust
 
 Usage: rexec [OPTIONS] --expression <EXPRESSION> --command <COMMAND>
