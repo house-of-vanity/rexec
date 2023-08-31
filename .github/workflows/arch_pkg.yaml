@@ -22,7 +22,7 @@ jobs:
          target: x86_64-unknown-linux-musl
          components: rustfmt
      - name: Install build deps
-       run: pacman -Syu rustup musl git
+       run: pacman -Syu --noconfirm rustup musl git
      - name: Build ZST package
        run: makepkg -f
      - uses: actions/upload-artifact@v2
