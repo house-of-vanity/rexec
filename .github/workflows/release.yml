@@ -46,23 +46,23 @@ jobs:
       - name: Get version
         run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
       - uses: actions/download-artifact@master
-	name: Download
-	id: download_binary
-	with:
-	  name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
-	  path: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
+        name: Download
+        id: download_binary
+        with:
+          name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
+          path: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
       - name: Move binary
-	run: |
-	  mkdir -p target/${{ env.BUILD_TARGET }}/release/
-	  mv ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}/rexec target/${{ env.BUILD_TARGET }}/release/
+        run: |
+          mkdir -p target/${{ env.BUILD_TARGET }}/release/
+          mv ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}/rexec target/${{ env.BUILD_TARGET }}/release/
       - name: Build ZST package
-	run: |
-	  makepkg -f
+        run: |
+          makepkg -f
       - uses: actions/upload-artifact@v2
-	name: Upload artifact
-	with:
-	  name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}.zst
-	  path: *zst
+        name: Upload artifact
+        with:
+          name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}.zst
+          path: *zst
 
 
 # release:
