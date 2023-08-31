@@ -47,7 +47,7 @@ jobs:
     - name: Install build deps
       run: |
         #pacman -Syu --noconfirm rustup musl git tree
-        ls -lah
+        ls -lah ${{ env.BINARY_NAME }}_x86_64-linux-musl
         makepkg -f
         ls -lah
 
