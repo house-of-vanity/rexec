@@ -73,6 +73,9 @@ jobs:
     permissions:
       contents: write
     steps:
+    - uses: actions/checkout@v3
+    - name: Get version
+      run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
     - uses: actions/download-artifact@master
       name: Download binary
       id: download_binary
