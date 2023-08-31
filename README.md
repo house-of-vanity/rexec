@@ -26,7 +26,37 @@ Options:
 ```
 
 ```shell
-[ab@test debug]$ ./rexec -u ab -k -c uptime -e admin.* -f
+[ab@test]$ rexec -e 'cassandra-gce-sc-[1:3].bbs-prod.*' -u ab -c 'df -h /srv/cassandra'
+[INFO ] Using string expansion to build server list.
+[INFO ] Matched hosts:
+[INFO ] cassandra-gce-sc-1.bbs-prod.* [35.221.18.35]
+[INFO ] cassandra-gce-sc-2.bbs-prod.* [35.212.13.174]
+[INFO ] cassandra-gce-sc-3.bbs-prod.* [35.211.213.123]
+Continue on following 3 servers? y
+[INFO ] 
+    
+[INFO ] Run command on 3 servers.
+[INFO ] 
+    
+[INFO ] cassandra-gce-sc-2.bbs-prod.*
+Code 0
+STDOUT:
+Filesystem                     Size  Used Avail Use% Mounted on
+/dev/mapper/storage-cassandra  1.0T  613G  411G  60% /srv/cassandra
+
+[INFO ] cassandra-gce-sc-1.bbs-prod.*
+Code 0
+STDOUT:
+Filesystem                     Size  Used Avail Use% Mounted on
+/dev/mapper/storage-cassandra  1.0T  594G  430G  59% /srv/cassandra
+
+[INFO ] cassandra-gce-sc-3.bbs-prod.*
+Code 0
+STDOUT:
+Filesystem                     Size  Used Avail Use% Mounted on
+/dev/mapper/storage-cassandra  1.0T  523G  502G  52% /srv/cassandra
+
+[ab@test]$ ./rexec -u ab -k -c uptime -e admin.* -f
 [INFO ] Matched hosts:
 [INFO ] admin-gce-sc-1.lca-prod.** [35.211.27.195]
 [INFO ] admin-gce-sc-1.mmk-prod.** [35.211.79.202]
@@ -36,27 +66,18 @@ Options:
     
 [INFO ] Run command on 3 servers.
 
-
 [INFO ] admin.gnb-prod.**
 Code 0 
 STDOUT:                                                    
  23:31:21 up 294 days, 14:14,  0 users,  load average: 0.53, 0.64, 0.52
-
-STDERR:
                                                                                                                        
 [INFO ] admin.abe-prod.**
 Code 0 
 STDOUT:                                                    
  23:31:22 up 154 days,  9:24,  0 users,  load average: 0.31, 0.25, 0.18
-                                                           
-STDERR:
 
 [INFO ] admin-gce-be-1.toy-prod.**
 Code 0                                                     
 STDOUT:
  23:31:22 up 98 days,  6:20,  0 users,  load average: 0.88, 0.74, 0.80
-                             
-STDERR:
-no server running on /tmp/tmux-1019/default                                                                            
-open terminal failed: not a terminal
 ```
