@@ -24,8 +24,8 @@ jobs:
          components: rustfmt
      - name: Install build deps
        run: pacman -Syu --noconfirm rustup musl git base-devel sudo
-     - name: Build archlinux package
-       uses: mijailr/arch-makepkg-action@v1
+     - name: Archlinux MAKEPKG action
+       uses: mijailr/arch-makepkg-action@1.0.1
 #    - name: Build ZST package
 #      run: |
 #        useradd -G wheel -d /rexec/ -s /bin/bash build
