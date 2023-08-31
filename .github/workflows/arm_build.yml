@@ -3,6 +3,7 @@ on: ["push"]
 # push:
 #   tags:
 #   - '*'
+#    
 env:
   CARGO_TERM_COLOR: always
   BUILD_TARGET: x86_64-unknown-linux-musl
@@ -11,15 +12,23 @@ jobs:
   build:
     name: Build static binary
     runs-on: self-hosted
+    container:
+      image: archlinux:base-devel
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build-musl
-        uses: gmiam/rust-musl-action@master
-        with:
-          args: cargo build --target $BUILD_TARGET --release
+#     - name: Build-musl
+#       uses: gmiam/rust-musl-action@master
+#       with:
+#         args: cargo build --target $BUILD_TARGET --release
+      - name: Deps
+        run: |
+          pacman -Syu --noconfirm rustup musl
+          rustup target add x86_64-unknown-linux-musl
+          cargo build --target ${{ BUILD_TARGET }} --release
+          
       - name: Get version
         run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
       - name: Show version
