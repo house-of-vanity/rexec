@@ -29,22 +29,22 @@ jobs:
           name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
           path: target/x86_64-unknown-linux-musl/release/${{ env.BINARY_NAME }}
 
-   build_arch:
-     name: Arch Linux package
-     runs-on: ubuntu-latest
-     container:
-       image: archlinux
-     permissions:
-       contents: write
-     steps:
-    - uses: actions/download-artifact@master
-      name: Download built binary
-      id: download_binary
-      with:
-        name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
-        path: ${{ env.BINARY_NAME }}_x86_64-linux-musl
-    - name: List
-      run: ls -lah
+  build_arch:
+    name: Arch Linux package
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux
+    permissions:
+      contents: write
+    steps:
+   - uses: actions/download-artifact@master
+     name: Download built binary
+     id: download_binary
+     with:
+       name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
+       path: ${{ env.BINARY_NAME }}_x86_64-linux-musl
+   - name: List
+     run: ls -lah
 
 # release:
 #   name: Release binary
