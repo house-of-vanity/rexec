@@ -1,6 +1,6 @@
 # Maintainer: AB <gh@hexor.ru>
 pkgname=rexec
-pkgver=1.0.6
+pkgver=some_ver
 pkgrel=1
 pkgdesc="Parallel SSH executor"
 url="https://github.com/house-of-vanity/rexec"

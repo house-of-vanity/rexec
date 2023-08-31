@@ -1,8 +1,8 @@
 name: Rust static build and publish
-on: ["push"]
-# push:
-#   tags:
-#   - '*'
+on:
+  push:
+    tags:
+    - '*'
 env:
   CARGO_TERM_COLOR: always
   BUILD_TARGET: x86_64-unknown-linux-musl
@@ -51,10 +51,11 @@ jobs:
         with:
           name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
           path: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
-      - name: Move binary
+      - name: Prepare build env
         run: |
           mkdir -p target/${{ env.BUILD_TARGET }}/release/
           mv ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}/rexec target/${{ env.BUILD_TARGET }}/release/
+          sed -i -e "s/some_ver/${{ env.VERSION }}/" PKGBUILD
       - name: Build ZST package
         run: |
           makepkg -f
@@ -65,26 +66,28 @@ jobs:
           path: ${{ github.workspace }}/*zst
 
 
-# release:
-#   name: Release binary
-#   needs: ["build"]
-#   runs-on: ubuntu-latest
-#   permissions:
-#     contents: write
-#   steps:
-#   - uses: actions/download-artifact@master
-#     id: download_binary
-#     with:
-#       name: ${{ env.BINARY_NAME }}_x86_64-linux-musl
-#       path: ${{ env.BINARY_NAME }}_x86_64-linux-musl
-#    - uses: actions/download-artifact@master
-#      id: download_pkgbuild
-#      with:
-#        name: PKGBUILD
-#        path: PKGBUILD
-#   - uses: ncipollo/release-action@v1
-#     name: Update release page
-#     with:
-#       artifacts: "${{ steps.download_binary.outputs.download-path }}/*"
-#       allowUpdates: true
-#       body: Static build for x86_64-linux using MUSL
+  release:
+    name: Release binary
+    needs: ["build"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/download-artifact@master
+      name: Download binary
+      id: download_binary
+      with:
+        name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
+        path: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
+    - uses: actions/download-artifact@master
+      id: download_pkg
+      name: Download ZST package
+      with:
+        name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}.zst
+        path: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}.zst
+    - uses: ncipollo/release-action@v1
+      name: Update release page
+      with:
+        artifacts: "${{ steps.download_binary.outputs.download-path }}/*,${{ steps.download_pkg.outputs.download-path }}/*"
+        allowUpdates: true
+        body: Static musl build for x86_64-linux and Arch Linux package
