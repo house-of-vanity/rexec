@@ -62,7 +62,7 @@ jobs:
         name: Upload artifact
         with:
           name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}.zst
-          path: *zst
+          path: ${{ github.workspace }}/*zst
 
 
 # release:
