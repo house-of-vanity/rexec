@@ -223,16 +223,16 @@ fn main() {
     // Ask for confirmation
     if config.hosts.len() != 0
         && (args.noconfirm == true
-        || match Question::new(&*format!(
-            "Continue on following {} servers?",
-            &config.hosts.len()
-        ))
-        .confirm()
-        {
-            Answer::YES => true,
-            Answer::NO => false,
-            _ => unreachable!(),
-        })
+            || match Question::new(&*format!(
+                "Continue on following {} servers?",
+                &config.hosts.len()
+            ))
+            .confirm()
+            {
+                Answer::YES => true,
+                Answer::NO => false,
+                _ => unreachable!(),
+            })
     {
         info!("\n");
         info!("Run command on {} servers.", &config.hosts.len());
