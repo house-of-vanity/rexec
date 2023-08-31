@@ -13,7 +13,7 @@ jobs:
     name: Build static binary
     runs-on: self-hosted
     container:
-      image: rust:alpine
+      image: rust:latest
     permissions:
       contents: write
     steps:
