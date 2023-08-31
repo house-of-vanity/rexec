@@ -2,8 +2,11 @@
 **Parallel SSH executor** in Rust with static binary. It can read servers from `~/.ssh/known_hosts`
 
 or even expand servers from bash expanshion line `cassandra-[1:5].{prod,dev}.example.com`
-[![Rust-static-build](https://github.com/house-of-vanity/rexec/actions/workflows/release.yml/badge.svg)](https://github.com/house-of-vanity/rexec/actions/workflows/release.yml)
 
+[![Rust-static-build](https://github.com/house-of-vanity/rexec/actions/workflows/release.yml/badge.svg)](https://github.com/house-of-vanity/rexec/actions/workflows/release.yml)
+---
+
+## Usage
 ```shell                                                    
             _|_|_|_|   _|      _|   _|_|_|_|     _|_|_|  
  _|  _|_|   _|           _|  _|     _|         _|        
@@ -12,7 +15,6 @@ or even expand servers from bash expanshion line `cassandra-[1:5].{prod,dev}.exa
  _|         _|_|_|_|   _|      _|   _|_|_|_|     _|_|_|  
                                                         
 
-[ab@test]$ rexec --help
 Parallel SSH executor in Rust
 
 Usage: rexec [OPTIONS] --expression <EXPRESSION> --command <COMMAND>
@@ -28,7 +30,9 @@ Options:
   -h, --help                     Print help
   -V, --version                  Print version
 ```
+---
 
+## Examples
 ```shell
 [ab@test]$ rexec -e 'cassandra-gce-sc-[1:3].bbs-prod.*' -u ab -c 'df -h /srv/cassandra'
 [INFO ] Using string expansion to build server list.
@@ -59,7 +63,10 @@ Code 0
 STDOUT:
 Filesystem                     Size  Used Avail Use% Mounted on
 /dev/mapper/storage-cassandra  1.0T  523G  502G  52% /srv/cassandra
+```
+---
 
+```shell
 [ab@test]$ ./rexec -u ab -k -c uptime -e admin.* -f
 [INFO ] Matched hosts:
 [INFO ] admin-gce-sc-1.lca-prod.** [35.211.27.195]
