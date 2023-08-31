@@ -29,3 +29,4 @@ jobs:
         with:
           name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
           path: target/${{ env.BUILD_TARGET }}/release/${{ env.BINARY_NAME }}
+
