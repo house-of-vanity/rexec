@@ -1,0 +1,33 @@
+name: Rust static build and publish
+on: ["push"]
+env:
+  CARGO_TERM_COLOR: always
+  BUILD_TARGET: x86_64-unknown-linux-musl
+  BINARY_NAME: rexec
+jobs:
+   build_arch:
+     name: Arch Linux package
+     runs-on: ubuntu-latest
+     container:
+       image: archlinux
+     permissions:
+       contents: write
+     steps:
+     - uses: actions/checkout@v3
+     - name: Install latest nightly
+       uses: actions-rs/toolchain@v1
+       with:
+         toolchain: stable
+         override: true
+         target: x86_64-unknown-linux-musl
+         components: rustfmt
+     - name: Install build deps
+       run: pacman -Syu rustup musl git
+     - name: Build ZST package
+       run: makepkg -f
+     - uses: actions/upload-artifact@v2
+       name: Upload ZST package
+       with:
+           name: ${{ env.BINARY_NAME }}.zst
+           path: rexec.*zst
+
