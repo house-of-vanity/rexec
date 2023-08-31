@@ -13,7 +13,7 @@ jobs:
     name: Build static binary
     runs-on: self-hosted
     container:
-      image: archlinux:base-devel
+      image: agners/archlinuxarm:latest
     permissions:
       contents: write
     steps:
