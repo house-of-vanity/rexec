@@ -5,34 +5,39 @@ env:
   BUILD_TARGET: x86_64-unknown-linux-musl
   BINARY_NAME: rexec
 jobs:
-   build_arch:
-     name: Arch Linux package
-     runs-on: ubuntu-latest
-     container:
-       image: archlinux:base-devel
-#      options: --user 1001
-     permissions:
-       contents: write
-     steps:
-     - uses: actions/checkout@v3
-     - name: Install latest nightly
-       uses: actions-rs/toolchain@v1
-       with:
-         toolchain: stable
-         override: true
-         target: x86_64-unknown-linux-musl
-         components: rustfmt
-     - name: Install build deps
-       run: pacman -Syu --noconfirm rustup musl git base-devel sudo
-     - name: Archlinux MAKEPKG action
-       uses: mijailr/arch-makepkg-action@1.0.1
-#    - name: Build ZST package
-#      run: |
-#        useradd -G wheel -d /rexec/ -s /bin/bash build
-#        makepkg -f
-     - uses: actions/upload-artifact@v2
-       name: Upload ZST package
-       with:
-           name: ${{ env.BINARY_NAME }}.zst
-           path: rexec.*zst
+  build_arch:
+    name: Arch Linux package
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+#     options: --user 1001
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        target: x86_64-unknown-linux-musl
+        components: rustfmt
+    - name: Install build deps
+      run: pacman -Syu --noconfirm rustup musl git base-devel sudo
+    - name: Makepkg Build and Check
+      id: makepkg
+      uses: edlanglois/pkgbuild-action@v1.1.8
+    - name: Print Package Files
+      run: |
+        echo "Successfully created the following package archive"
+        echo "Package: ${{ steps.makepkg.outputs.pkgfile0 }}"
+#   - name: Build ZST package
+#     run: |
+#       useradd -G wheel -d /rexec/ -s /bin/bash build
+#       makepkg -f
+    - uses: actions/upload-artifact@v2
+      name: Upload ZST package
+      with:
+          name: ${{ env.BINARY_NAME }}.zst
+          path: rexec.*zst
 
