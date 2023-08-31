@@ -20,12 +20,12 @@ jobs:
       with:
         toolchain: stable
         override: true
-        target: x86_64-unknown-linux-musl
+        target: ${{ env.BUILD_TARGET }}
         components: rustfmt
     - name: Install build deps
       run: |
         pacman -Syu --noconfirm rustup musl git base-devel
-        rustup target add ${{ env.BUILD_TARGET }}
+        rustup default stable
     - name: Makepkg Build and Check
       id: makepkg
       uses: edlanglois/pkgbuild-action@v1.1.8
