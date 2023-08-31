@@ -27,7 +27,7 @@ jobs:
         run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
       - name: Show version
         run:  echo ${{ env.VERSION }}
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3.1.2
         name: Upload artifact
         with:
           name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}
@@ -59,7 +59,7 @@ jobs:
       - name: Build ZST package
         run: |
           makepkg -f
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3.1.2
         name: Upload artifact
         with:
           name: ${{ env.BINARY_NAME }}_${{ env.VERSION }}_${{ env.BUILD_TARGET }}.zst
