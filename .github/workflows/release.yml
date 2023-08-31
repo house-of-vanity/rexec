@@ -26,7 +26,7 @@ jobs:
       - name: Get version
         run: echo "VERSION=$(grep -P '^version = \"\d+\.\d+\.\d+\"' Cargo.toml | awk -F '\"' '{print $2}')" >> $GITHUB_ENV
       - name: Show version
-	run:  echo ${{ env.VERSION }}
+        run:  echo ${{ env.VERSION }}
       - uses: actions/upload-artifact@v2
         name: Upload artifact
         with:
