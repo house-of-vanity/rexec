@@ -52,14 +52,6 @@ struct Args {
     )]
     noconfirm: bool,
 
-    #[arg(
-        short = 'b',
-        long,
-        default_value_t = true,
-        help = "Use formatting for better human readability"
-    )]
-    beauty: bool,
-
     #[arg(short, long, default_value_t = 100)]
     parallel: i32,
 }
@@ -275,37 +267,41 @@ fn main() {
             } else {
                 format!("{}", output.exit_status.to_string().red())
             };
-            println!("{}", format!("Exit code [{}] / stdout {} bytes / stderr {} bytes", code_string, output.stdout.len(), output.stderr.len()).bold());
+            println!(
+                "{}",
+                format!(
+                    "Exit code [{}] / stdout {} bytes / stderr {} bytes",
+                    code_string,
+                    output.stdout.len(),
+                    output.stderr.len()
+                )
+                .bold()
+            );
 
             if !args.code {
                 match String::from_utf8(output.stdout) {
-                    Ok(stdout) => {
-                        match stdout.as_str() {
-                            "" => {}
-                            _ => {
-                                println!("{}", "STDOUT".bold().blue());
-                                for line in stdout.lines() {
-                                    println!("{} {}", "║".green(), line);
-                                }
+                    Ok(stdout) => match stdout.as_str() {
+                        "" => {}
+                        _ => {
+                            println!("{}", "STDOUT".bold().blue());
+
+                            for line in stdout.lines() {
+                                println!("{} {}", "║".green(), line);
                             }
                         }
-
-                    }
+                    },
                     Err(_) => {}
                 }
                 match String::from_utf8(output.stderr) {
-                    Ok(stderr) => {
-                        match stderr.as_str() {
-                            "" => {}
-                            _ => {
-                                println!("{}", "STDERR".bold().bright_red());
-                                for line in stderr.lines() {
-                                    println!("{} {}", "║".red(), line);
-                                }
+                    Ok(stderr) => match stderr.as_str() {
+                        "" => {}
+                        _ => {
+                            println!("{}", "STDERR".bold().bright_red());
+                            for line in stderr.lines() {
+                                println!("{} {}", "║".red(), line);
                             }
                         }
-
-                    }
+                    },
                     Err(_) => {}
                 }
             }
