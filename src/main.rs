@@ -270,7 +270,7 @@ fn main() {
             println!(
                 "{}",
                 format!(
-                    "Exit code [{}] / stdout {} bytes / stderr {} bytes",
+                    "Exit code [{}] | std out/err [{}/{}] bytes",
                     code_string,
                     output.stdout.len(),
                     output.stderr.len()
@@ -283,8 +283,13 @@ fn main() {
                     Ok(stdout) => match stdout.as_str() {
                         "" => {}
                         _ => {
+                            let prefix = if output.exit_status != 0 {
+                                format!("{}", "║".cyan())
+                            } else {
+                                format!("{}", "║".green())
+                            };
                             for line in stdout.lines() {
-                                println!("{} {}", "║".green(), line);
+                                println!("{} {}", prefix, line);
                             }
                         }
                     },
