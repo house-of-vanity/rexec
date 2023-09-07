@@ -32,63 +32,31 @@ Options:
 ```
 ---
 
+![image](https://github.com/house-of-vanity/rexec/assets/4666566/4c52915d-2bc1-46b9-9833-b0d7c0527f2d)
+
+
 ## Examples
 ```shell
-[ab@test]$ rexec -e 'cassandra-gce-sc-[1:3].bbs-prod.*' -u ab -c 'df -h /srv/cassandra'
+$ rexec -f \
+    -e 'cassandra-gce-or-[1:2]' \
+    -u ab \
+    -c 'uname -r; date'
 [INFO ] Using string expansion to build server list.
 [INFO ] Matched hosts:
-[INFO ] cassandra-gce-sc-1.bbs-prod.* [35.221.18.35]
-[INFO ] cassandra-gce-sc-2.bbs-prod.* [35.212.13.174]
-[INFO ] cassandra-gce-sc-3.bbs-prod.* [35.211.213.123]
-Continue on following 3 servers? y
-[INFO ] 
-    
-[INFO ] Run command on 3 servers.
-[INFO ] 
-    
-[INFO ] cassandra-gce-sc-2.bbs-prod.*
-Code 0
-STDOUT:
-Filesystem                     Size  Used Avail Use% Mounted on
-/dev/mapper/storage-cassandra  1.0T  613G  411G  60% /srv/cassandra
+[INFO ] cassandra-gce-or-1.prod.example.com [2.22.123.79]
+[INFO ] cassandra-gce-or-2.prod.example.com [2.22.123.158]
+Continue on following 2 servers? y
+[INFO ] Run command on 2 servers.
 
-[INFO ] cassandra-gce-sc-1.bbs-prod.*
-Code 0
-STDOUT:
-Filesystem                     Size  Used Avail Use% Mounted on
-/dev/mapper/storage-cassandra  1.0T  594G  430G  59% /srv/cassandra
+cassandra-gce-or-1.prod.example.com
+Exit code [0] / stdout 45 bytes / stderr 0 bytes
+STDOUT
+║ 5.15.0-1040-gcp
+║ Thu Sep  7 13:44:40 UTC 2023
 
-[INFO ] cassandra-gce-sc-3.bbs-prod.*
-Code 0
-STDOUT:
-Filesystem                     Size  Used Avail Use% Mounted on
-/dev/mapper/storage-cassandra  1.0T  523G  502G  52% /srv/cassandra
-```
----
-
-```shell
-[ab@test]$ ./rexec -u ab -k -c uptime -e admin.* -f
-[INFO ] Matched hosts:
-[INFO ] admin-gce-sc-1.lca-prod.** [35.211.27.195]
-[INFO ] admin-gce-sc-1.mmk-prod.** [35.211.79.202]
-[ERROR] admin-gce-sc-1.led-prod.** couldn't be resolved.
-[INFO ] admin-gce-sc-1.msq-dev.** [35.211.0.24]
-[ERROR] admin-gce-sc-1.hui-dev.** couldn't be resolved.
-    
-[INFO ] Run command on 3 servers.
-
-[INFO ] admin.gnb-prod.**
-Code 0 
-STDOUT:                                                    
- 23:31:21 up 294 days, 14:14,  0 users,  load average: 0.53, 0.64, 0.52
-                                                                                                                       
-[INFO ] admin.abe-prod.**
-Code 0 
-STDOUT:                                                    
- 23:31:22 up 154 days,  9:24,  0 users,  load average: 0.31, 0.25, 0.18
-
-[INFO ] admin-gce-be-1.toy-prod.**
-Code 0                                                     
-STDOUT:
- 23:31:22 up 98 days,  6:20,  0 users,  load average: 0.88, 0.74, 0.80
+cassandra-gce-or-2.prod.example.com
+Exit code [0] / stdout 45 bytes / stderr 0 bytes
+STDOUT
+║ 5.15.0-1040-gcp
+║ Thu Sep  7 13:44:40 UTC 2023
 ```
