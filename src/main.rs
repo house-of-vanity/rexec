@@ -9,7 +9,6 @@ use std::process;
 
 use clap::Parser;
 use colored::*;
-//use dialoguer::Confirm;
 use dns_lookup::lookup_host;
 use env_logger::Env;
 use itertools::Itertools;
@@ -52,6 +51,14 @@ struct Args {
         help = "Don't ask for confirmation"
     )]
     noconfirm: bool,
+
+    #[arg(
+        short = 'b',
+        long,
+        default_value_t = true,
+        help = "Use formatting for better human readability"
+    )]
+    beauty: bool,
 
     #[arg(short, long, default_value_t = 100)]
     parallel: i32,
@@ -234,9 +241,7 @@ fn main() {
                 _ => unreachable!(),
             })
     {
-        info!("\n");
         info!("Run command on {} servers.", &config.hosts.len());
-        info!("\n");
 
         // Run a command on all the configured hosts.
         // Receive the result of the command for each host and print its output.
@@ -248,8 +253,8 @@ fn main() {
                 .collect::<Vec<_>>()[0]
                 .to_string();
             let ip = ip.parse::<IpAddr>().unwrap();
-            info!(
-                "{}",
+            println!(
+                "\n{}",
                 hosts_and_ips
                     .get(&ip)
                     .unwrap_or(&"Couldn't parse IP".to_string())
@@ -265,14 +270,44 @@ fn main() {
                     continue;
                 }
             };
-            if output.exit_status == 0 {
-                println!("Code {}", output.exit_status);
+            let code_string = if output.exit_status == 0 {
+                format!("{}", output.exit_status.to_string().green())
             } else {
-                error!("Code {}", output.exit_status);
+                format!("{}", output.exit_status.to_string().red())
             };
+            println!("{}", format!("Exit code [{}] / stdout {} bytes / stderr {} bytes", code_string, output.stdout.len(), output.stderr.len()).bold());
+
             if !args.code {
-                println!("STDOUT:\n{}", String::from_utf8(output.stdout).unwrap());
-                println!("STDERR:\n{}", String::from_utf8(output.stderr).unwrap());
+                match String::from_utf8(output.stdout) {
+                    Ok(stdout) => {
+                        match stdout.as_str() {
+                            "" => {}
+                            _ => {
+                                println!("{}", "STDOUT".bold().blue());
+                                for line in stdout.lines() {
+                                    println!("{} {}", "║".green(), line);
+                                }
+                            }
+                        }
+
+                    }
+                    Err(_) => {}
+                }
+                match String::from_utf8(output.stderr) {
+                    Ok(stderr) => {
+                        match stderr.as_str() {
+                            "" => {}
+                            _ => {
+                                println!("{}", "STDERR".bold().bright_red());
+                                for line in stderr.lines() {
+                                    println!("{} {}", "║".red(), line);
+                                }
+                            }
+                        }
+
+                    }
+                    Err(_) => {}
+                }
             }
         }
     } else {
