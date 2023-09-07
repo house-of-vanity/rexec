@@ -34,9 +34,10 @@ struct Args {
     #[arg(
         short,
         long,
+        num_args = 1..,
         help = "Expression to build server list. List and range expansion are supported. Example: 'web-[1:12]-io-{prod,dev}'"
     )]
-    expression: String,
+    expression: Vec<String>,
 
     #[arg(short, long, help = "Command to execute on servers")]
     command: String,
@@ -156,22 +157,30 @@ fn main() {
     let hosts = if args.known_hosts {
         info!("Using ~/.ssh/known_hosts to build server list.");
         let known_hosts = read_known_hosts();
-        // Build regex
-        let re = match Regex::new(&args.expression) {
-            Ok(result) => result,
-            Err(e) => {
-                error!("Error parsing regex. {}", e);
-                process::exit(1);
-            }
-        };
-        // match hostnames from known_hosts to regex
-        known_hosts
-            .into_iter()
-            .filter(|r| re.is_match(&r.name.clone()))
-            .collect()
+        let mut all_hosts = Vec::new();
+        for expression in args.expression.iter() {
+            let re = match Regex::new(expression) {
+                Ok(result) => result,
+                Err(e) => {
+                    error!("Error parsing regex. {}", e);
+                    process::exit(1);
+                }
+            };
+            let matched: Vec<Host> = known_hosts
+                .clone()
+                .into_iter()
+                .filter(|r| re.is_match(&r.name.clone()))
+                .collect();
+            all_hosts.extend(matched);
+        }
+        all_hosts
     } else {
         info!("Using string expansion to build server list.");
-        expand_string(&args.expression)
+        let mut all_hosts = Vec::new();
+        for expression in args.expression.iter() {
+            all_hosts.extend(expand_string(expression));
+        }
+        all_hosts
     };
 
     // Dedup hosts from known_hosts file
