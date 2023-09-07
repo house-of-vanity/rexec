@@ -283,8 +283,6 @@ fn main() {
                     Ok(stdout) => match stdout.as_str() {
                         "" => {}
                         _ => {
-                            println!("{}", "STDOUT".bold().blue());
-
                             for line in stdout.lines() {
                                 println!("{} {}", "║".green(), line);
                             }
@@ -296,7 +294,6 @@ fn main() {
                     Ok(stderr) => match stderr.as_str() {
                         "" => {}
                         _ => {
-                            println!("{}", "STDERR".bold().bright_red());
                             for line in stderr.lines() {
                                 println!("{} {}", "║".red(), line);
                             }
