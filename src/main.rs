@@ -293,9 +293,9 @@ fn main() {
                         "" => {}
                         _ => {
                             let prefix = if output.exit_status != 0 {
-                                format!("{}", "║".cyan())
+                                format!("{}", "│".cyan())
                             } else {
-                                format!("{}", "║".green())
+                                format!("{}", "│".green())
                             };
                             for line in stdout.lines() {
                                 println!("{} {}", prefix, line);
