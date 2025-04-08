@@ -6,6 +6,7 @@ use std::fs::read_to_string;
 use std::hash::Hash;
 use std::net::IpAddr;
 use std::process;
+use std::sync::{Arc, Mutex};
 
 use clap::Parser;
 use colored::*;
@@ -15,6 +16,7 @@ use itertools::Itertools;
 use log::{error, info};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use question::{Answer, Question};
+use rayon::prelude::*;
 use regex::Regex;
 
 // Define args
@@ -187,8 +189,6 @@ fn main() {
     let matched_hosts: Vec<_> = hosts.into_iter().unique().collect();
 
     // Build MasshHostConfig hostnames list
-    let mut massh_hosts: Vec<MasshHostConfig> = vec![];
-    let mut hosts_and_ips: HashMap<IpAddr, String> = HashMap::new();
     if args.parallel != 100 {
         warn!("Parallelism: {} thread{}", &args.parallel, {
             if args.parallel != 1 {
@@ -200,23 +200,42 @@ fn main() {
     }
 
     info!("Matched hosts:");
-    for host in matched_hosts.iter() {
-        let ip = match lookup_host(&host.name) {
-            Ok(ip) => ip[0],
-            Err(_) => {
-                error!("{} couldn't be resolved.", &host.name.red());
-                continue;
+    let resolved_ips = Arc::new(Mutex::new(Vec::<(String, IpAddr)>::new()));
+
+    matched_hosts.par_iter().for_each(|host| {
+        match lookup_host(&host.name) {
+            Ok(ips) if !ips.is_empty() => {
+                let ip = ips[0];
+
+                info!("{} [{}]", &host.name, ip);
+
+                let mut results = resolved_ips.lock().unwrap();
+                results.push((host.name.clone(), ip));
             }
-        };
-        info!("{} [{}]", &host.name, ip);
-        hosts_and_ips.insert(ip, host.name.clone());
-        massh_hosts.push(MasshHostConfig {
-            addr: ip,
-            auth: None,
-            port: None,
-            user: None,
-        })
+            Ok(_) => {
+                error!("DNS resolved, but IP not found: {}", &host.name.red());
+            }
+            Err(_) => {
+                error!("DNS resolve failed: {}", &host.name.red());
+            }
+        }
+    });
+
+    let mut hosts_and_ips: HashMap<IpAddr, String> = HashMap::new();
+    let mut massh_hosts: Vec<MasshHostConfig> = Vec::new();
+
+    if let Ok(results) = resolved_ips.lock() {
+        for (hostname, ip) in results.iter() {
+            hosts_and_ips.insert(*ip, hostname.clone());
+            massh_hosts.push(MasshHostConfig {
+                addr: *ip,
+                auth: None,
+                port: None,
+                user: None,
+            });
+        }
     }
+
     // Build MasshConfig using massh_hosts vector
     let config = MasshConfig {
         default_auth: SshAuth::Agent,

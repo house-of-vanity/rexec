@@ -1,6 +1,6 @@
 [package]
 name = "rexec"
-version = "1.1.0"
+version = "1.2.0"
 readme = "https://github.com/house-of-vanity/rexec#readme"
 edition = "2021"
 description = "Parallel SSH executor"
@@ -14,6 +14,7 @@ authors = ["AB <gh@hexor.ru>"]
 
 [dependencies]
 dns-lookup = "2.0.2"
+rayon = "1.10"
 log = "0.4.0"
 env_logger = "0.10.0"
 massh = "0.6.3"
