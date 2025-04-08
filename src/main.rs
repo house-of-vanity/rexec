@@ -202,8 +202,9 @@ fn main() {
     info!("Matched hosts:");
     let resolved_ips = Arc::new(Mutex::new(Vec::<(String, IpAddr)>::new()));
 
-    matched_hosts.par_iter().for_each(|host| {
-        match lookup_host(&host.name) {
+    matched_hosts
+        .par_iter()
+        .for_each(|host| match lookup_host(&host.name) {
             Ok(ips) if !ips.is_empty() => {
                 let ip = ips[0];
 
@@ -218,8 +219,7 @@ fn main() {
             Err(_) => {
                 error!("DNS resolve failed: {}", &host.name.red());
             }
-        }
-    });
+        });
 
     let mut hosts_and_ips: HashMap<IpAddr, String> = HashMap::new();
     let mut massh_hosts: Vec<MasshHostConfig> = Vec::new();
