@@ -1,6 +1,6 @@
 [package]
 name = "rexec"
-version = "1.2.0"
+version = "1.2.1"
 readme = "https://github.com/house-of-vanity/rexec#readme"
 edition = "2021"
 description = "Parallel SSH executor"
