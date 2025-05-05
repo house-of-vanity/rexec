@@ -13,7 +13,7 @@ use colored::*;
 use dns_lookup::lookup_host;
 use env_logger::Env;
 use itertools::Itertools;
-use log::{error, info};
+use log::{error, info, warn};
 use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use question::{Answer, Question};
 use rayon::prelude::*;
@@ -185,7 +185,7 @@ fn main() {
         all_hosts
     };
 
-    // Dedup hosts from known_hosts file
+    // Dedup hosts from known_hosts file but preserve original order
     let matched_hosts: Vec<_> = hosts.into_iter().unique().collect();
 
     // Build MasshHostConfig hostnames list
@@ -199,36 +199,58 @@ fn main() {
         });
     }
 
-    info!("Matched hosts:");
-    let resolved_ips = Arc::new(Mutex::new(Vec::<(String, IpAddr)>::new()));
+    // Store hosts with their indices to preserve order
+    let mut host_with_indices: Vec<(Host, usize)> = Vec::new();
+    for (idx, host) in matched_hosts.iter().enumerate() {
+        host_with_indices.push((host.clone(), idx));
+    }
 
-    matched_hosts.par_iter().for_each(|host| {
+    info!("Matched hosts:");
+    
+    // Do DNS resolution in parallel but store results for ordered display later
+    let resolved_ips_with_indices = Arc::new(Mutex::new(Vec::<(String, IpAddr, usize)>::new()));
+
+    host_with_indices.par_iter().for_each(|(host, idx)| {
         match lookup_host(&host.name) {
             Ok(ips) if !ips.is_empty() => {
                 let ip = ips[0];
-
-                info!("{} [{}]", &host.name, ip);
-
-                let mut results = resolved_ips.lock().unwrap();
-                results.push((host.name.clone(), ip));
+                let mut results = resolved_ips_with_indices.lock().unwrap();
+                results.push((host.name.clone(), ip, *idx));
             }
             Ok(_) => {
-                error!("DNS resolved, but IP not found: {}", &host.name.red());
+                let mut results = resolved_ips_with_indices.lock().unwrap();
+                results.push((host.name.clone(), IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), *idx));
             }
             Err(_) => {
-                error!("DNS resolve failed: {}", &host.name.red());
+                let mut results = resolved_ips_with_indices.lock().unwrap();
+                results.push((host.name.clone(), IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), *idx));
             }
         }
     });
 
-    let mut hosts_and_ips: HashMap<IpAddr, String> = HashMap::new();
+    // Sort by original index to ensure hosts are displayed in order
+    let mut resolved_hosts = resolved_ips_with_indices.lock().unwrap().clone();
+    resolved_hosts.sort_by_key(|(_, _, idx)| *idx);
+    
+    // Now print the hosts in the correct order
+    for (hostname, ip, _) in &resolved_hosts {
+        if ip.is_unspecified() {
+            error!("DNS resolve failed: {}", hostname.red());
+        } else {
+            info!("{} [{}]", hostname, ip);
+        }
+    }
+
+    // Create massh_hosts in the correct order
+    let mut hosts_and_ips: HashMap<IpAddr, (String, usize)> = HashMap::new();
     let mut massh_hosts: Vec<MasshHostConfig> = Vec::new();
 
-    if let Ok(results) = resolved_ips.lock() {
-        for (hostname, ip) in results.iter() {
-            hosts_and_ips.insert(*ip, hostname.clone());
+    for (hostname, ip, idx) in resolved_hosts {
+        // Skip hosts that couldn't be resolved
+        if !ip.is_unspecified() {
+            hosts_and_ips.insert(ip, (hostname.clone(), idx));
             massh_hosts.push(MasshHostConfig {
-                addr: *ip,
+                addr: ip,
                 auth: None,
                 port: None,
                 user: None,
@@ -236,23 +258,15 @@ fn main() {
         }
     }
 
-    // Build MasshConfig using massh_hosts vector
-    let config = MasshConfig {
-        default_auth: SshAuth::Agent,
-        default_port: 22,
-        default_user: args.username,
-        threads: args.parallel as u64,
-        timeout: 0,
-        hosts: massh_hosts,
-    };
-    let massh = MasshClient::from(&config);
-
+    // Process hosts in batches to maintain order
+    let batch_size = args.parallel as usize;
+    
     // Ask for confirmation
-    if config.hosts.len() != 0
-        && (args.noconfirm == true
+    if !massh_hosts.is_empty()
+        && (args.noconfirm
             || match Question::new(&*format!(
                 "Continue on following {} servers?",
-                &config.hosts.len()
+                &massh_hosts.len()
             ))
             .confirm()
             {
@@ -261,80 +275,120 @@ fn main() {
                 _ => unreachable!(),
             })
     {
-        info!("Run command on {} servers.", &config.hosts.len());
+        info!("Run command on {} servers.", &massh_hosts.len());
 
-        // Run a command on all the configured hosts.
-        // Receive the result of the command for each host and print its output.
-        let rx = massh.execute(args.command);
+        let mut processed = 0;
 
-        while let Ok((host, result)) = rx.recv() {
-            let ip: String = host.split('@').collect::<Vec<_>>()[1]
-                .split(':')
-                .collect::<Vec<_>>()[0]
-                .to_string();
-            let ip = ip.parse::<IpAddr>().unwrap();
-            println!(
-                "\n{}",
-                hosts_and_ips
-                    .get(&ip)
-                    .unwrap_or(&"Couldn't parse IP".to_string())
-                    .to_string()
-                    .yellow()
-                    .bold()
-                    .to_string()
-            );
-            let output = match result {
-                Ok(output) => output,
-                Err(e) => {
-                    error!("Can't access server: {}", e);
-                    continue;
-                }
+        while processed < massh_hosts.len() {
+            let end = std::cmp::min(processed + batch_size, massh_hosts.len());
+            
+            // Create a new config and vector for this batch
+            let mut batch_hosts = Vec::new();
+            for host in &massh_hosts[processed..end] {
+                batch_hosts.push(MasshHostConfig {
+                    addr: host.addr,
+                    auth: None,
+                    port: None,
+                    user: None,
+                });
+            }
+            
+            // Create a new MasshClient for this batch
+            let batch_config = MasshConfig {
+                default_auth: SshAuth::Agent,
+                default_port: 22,
+                default_user: args.username.clone(),
+                threads: batch_hosts.len() as u64,
+                timeout: 0,
+                hosts: batch_hosts,
             };
-            let code_string = if output.exit_status == 0 {
-                format!("{}", output.exit_status.to_string().green())
-            } else {
-                format!("{}", output.exit_status.to_string().red())
-            };
-            println!(
-                "{}",
-                format!(
-                    "Exit code [{}] | std out/err [{}/{}] bytes",
-                    code_string,
-                    output.stdout.len(),
-                    output.stderr.len()
-                )
-                .bold()
-            );
-
-            if !args.code {
-                match String::from_utf8(output.stdout) {
-                    Ok(stdout) => match stdout.as_str() {
-                        "" => {}
-                        _ => {
-                            let prefix = if output.exit_status != 0 {
-                                format!("{}", "│".cyan())
-                            } else {
-                                format!("{}", "│".green())
-                            };
-                            for line in stdout.lines() {
-                                println!("{} {}", prefix, line);
-                            }
-                        }
-                    },
-                    Err(_) => {}
-                }
-                match String::from_utf8(output.stderr) {
-                    Ok(stderr) => match stderr.as_str() {
-                        "" => {}
-                        _ => {
-                            for line in stderr.lines() {
-                                println!("{} {}", "║".red(), line);
-                            }
-                        }
-                    },
-                    Err(_) => {}
+            
+            let batch_massh = MasshClient::from(&batch_config);
+            
+            // Run commands on this batch
+            let rx = batch_massh.execute(args.command.clone());
+            
+            // Collect all results from this batch before moving to the next
+            let mut batch_results = Vec::new();
+            
+            while let Ok((host, result)) = rx.recv() {
+                let ip: String = host.split('@').collect::<Vec<_>>()[1]
+                    .split(':')
+                    .collect::<Vec<_>>()[0]
+                    .to_string();
+                let ip = ip.parse::<IpAddr>().unwrap();
+                
+                if let Some((hostname, idx)) = hosts_and_ips.get(&ip) {
+                    batch_results.push((hostname.clone(), ip, result, *idx));
+                } else {
+                    error!("Unexpected IP address in result: {}", ip);
                 }
             }
+            
+            // Sort the batch results by index to ensure they're displayed in order
+            batch_results.sort_by_key(|(_, _, _, idx)| *idx);
+            
+            // Display the results
+            for (hostname, _ip, result, _) in batch_results {
+                println!("\n{}", hostname.yellow().bold().to_string());
+                
+                let output = match result {
+                    Ok(output) => output,
+                    Err(e) => {
+                        error!("Can't access server: {}", e);
+                        continue;
+                    }
+                };
+                
+                let code_string = if output.exit_status == 0 {
+                    format!("{}", output.exit_status.to_string().green())
+                } else {
+                    format!("{}", output.exit_status.to_string().red())
+                };
+                
+                println!(
+                    "{}",
+                    format!(
+                        "Exit code [{}] / stdout {} bytes / stderr {} bytes",
+                        code_string,
+                        output.stdout.len(),
+                        output.stderr.len()
+                    )
+                    .bold()
+                );
+
+                if !args.code {
+                    match String::from_utf8(output.stdout) {
+                        Ok(stdout) => match stdout.as_str() {
+                            "" => {}
+                            _ => {
+                                let prefix = if output.exit_status != 0 {
+                                    format!("{}", "│".cyan())
+                                } else {
+                                    format!("{}", "│".green())
+                                };
+                                for line in stdout.lines() {
+                                    println!("{} {}", prefix, line);
+                                }
+                            }
+                        },
+                        Err(_) => {}
+                    }
+                    match String::from_utf8(output.stderr) {
+                        Ok(stderr) => match stderr.as_str() {
+                            "" => {}
+                            _ => {
+                                for line in stderr.lines() {
+                                    println!("{} {}", "║".red(), line);
+                                }
+                            }
+                        },
+                        Err(_) => {}
+                    }
+                }
+            }
+            
+            processed = end;
         }
     } else {
         warn!("Stopped");
