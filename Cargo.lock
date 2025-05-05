@@ -1111,7 +1111,7 @@ checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
 
 [[package]]
 name = "rexec"
-version = "1.2.1"
+version = "1.3.0"
 dependencies = [
  "brace-expand",
  "clap 4.3.4",
