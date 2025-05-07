@@ -25,7 +25,7 @@ use regex::Regex;
 #[command(author = "AB ab@hexor.ru", version, about = "Parallel SSH executor in Rust", long_about = None)]
 struct Args {
     /// Username for SSH connections (defaults to current system user)
-    #[arg(short, long, default_value_t = whoami::username())]
+    #[arg(short = 'u', short = 'l', long, default_value_t = whoami::username())]
     username: String,
 
     /// Flag to use known_hosts file for server discovery instead of pattern expansion
@@ -316,11 +316,11 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
     let display_name_stdout = display_name.clone();
     let stdout_thread = thread::spawn(move || {
         let reader = BufReader::new(stdout);
-        let prefix = format!("{}", "│".green());
+        let prefix = format!("{}", "║".green());
         
         for line in reader.lines() {
             match line {
-                Ok(line) => println!("{} {} - {}", prefix, display_name_stdout.yellow(), line),
+                Ok(line) => println!("{} {} {} {}", prefix, display_name_stdout.yellow(), prefix, line),
                 Err(_) => break,
             }
         }
@@ -335,7 +335,7 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
         
         for line in reader.lines() {
             match line {
-                Ok(line) => println!("{} {} - {}", prefix, display_name_stderr.yellow(), line),
+                Ok(line) => println!("{} {} {} {}", prefix, display_name_stderr.yellow(), prefix, line),
                 Err(_) => break,
             }
         }
