@@ -1,6 +1,5 @@
 extern crate log;
 
-use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::io::{BufRead, BufReader};
@@ -15,7 +14,6 @@ use dns_lookup::lookup_host;
 use env_logger::Env;
 use itertools::Itertools;
 use log::{error, info, warn};
-use massh::{MasshClient, MasshConfig, MasshHostConfig, SshAuth};
 use question::{Answer, Question};
 use rayon::prelude::*;
 use regex::Regex;
@@ -25,7 +23,7 @@ use regex::Regex;
 #[command(author = "AB ab@hexor.ru", version, about = "Parallel SSH executor in Rust", long_about = None)]
 struct Args {
     /// Username for SSH connections (defaults to current system user)
-    #[arg(short = 'u', short = 'l', long, default_value_t = whoami::username())]
+    #[arg(short = 'u', short_alias = 'l', long, default_value_t = whoami::username())]
     username: String,
 
     /// Flag to use known_hosts file for server discovery instead of pattern expansion
@@ -66,14 +64,6 @@ struct Args {
     /// Maximum number of parallel SSH connections
     #[arg(short, long, default_value_t = 100)]
     parallel: i32,
-    
-    /// Use the embedded SSH client library instead of system SSH command
-    #[arg(
-        long,
-        help = "Use embedded SSH client instead of system SSH. Does not support 'live output'.",
-        default_value_t = false,
-    )]
-    embedded_ssh: bool,
 }
 
 /// Host representation for both known_hosts entries and expanded patterns
@@ -287,10 +277,11 @@ fn expand_string(s: &str) -> Vec<Host> {
 /// * `username` - SSH username
 /// * `command` - Command to execute
 /// * `common_suffix` - Optional common suffix for hostname display formatting
+/// * `code_only` - Whether to display only exit codes
 /// 
 /// # Returns
 /// * `Result<i32, String>` - Exit code on success or error message
-fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suffix: &Option<String>) -> Result<i32, String> {
+fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suffix: &Option<String>, code_only: bool) -> Result<i32, String> {
     let display_name = shorten_hostname(hostname, common_suffix);
     
     // Display execution start message with shortened hostname
@@ -314,13 +305,18 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
     // Capture and display stdout in real-time using a dedicated thread
     let stdout = child.stdout.take().unwrap();
     let display_name_stdout = display_name.clone();
+    let code_only_stdout = code_only;
     let stdout_thread = thread::spawn(move || {
         let reader = BufReader::new(stdout);
         let prefix = format!("{}", "║".green());
         
         for line in reader.lines() {
             match line {
-                Ok(line) => println!("{} {} {} {}", prefix, display_name_stdout.yellow(), prefix, line),
+                Ok(line) => {
+                    if !code_only_stdout {
+                        println!("{} {} {} {}", prefix, display_name_stdout.yellow(), prefix, line);
+                    }
+                },
                 Err(_) => break,
             }
         }
@@ -329,13 +325,18 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
     // Capture and display stderr in real-time using a dedicated thread
     let stderr = child.stderr.take().unwrap();
     let display_name_stderr = display_name.clone();
+    let code_only_stderr = code_only;
     let stderr_thread = thread::spawn(move || {
         let reader = BufReader::new(stderr);
         let prefix = format!("{}", "║".red());
         
         for line in reader.lines() {
             match line {
-                Ok(line) => println!("{} {} {} {}", prefix, display_name_stderr.yellow(), prefix, line),
+                Ok(line) => {
+                    if !code_only_stderr {
+                        println!("{} {} {} {}", prefix, display_name_stderr.yellow(), prefix, line);
+                    }
+                },
                 Err(_) => break,
             }
         }
@@ -363,161 +364,6 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
     println!("{} - COMPLETED (Exit code: [{}])", display_name.yellow().bold(), code_string);
     
     Ok(exit_code)
-}
-
-/// Execute commands on multiple hosts using the massh library (embedded SSH)
-/// 
-/// This function handles batch processing of hosts to maintain the original order
-/// while executing commands in parallel using the massh library.
-/// 
-/// # Arguments
-/// * `hosts` - Vector of (hostname, IP address, original index) tuples
-/// * `username` - SSH username
-/// * `command` - Command to execute
-/// * `parallel` - Maximum number of parallel connections
-/// * `code_only` - Whether to display only exit codes
-/// * `common_suffix` - Optional common suffix for hostname display formatting
-fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command: &str, parallel: i32, code_only: bool, common_suffix: &Option<String>) {
-    // Create a lookup table for host data using IP addresses as keys
-    let mut hosts_and_ips: HashMap<IpAddr, (String, usize)> = HashMap::new();
-    let mut massh_hosts: Vec<MasshHostConfig> = Vec::new();
-
-    for (hostname, ip, idx) in hosts {
-        hosts_and_ips.insert(*ip, (hostname.clone(), *idx));
-        massh_hosts.push(MasshHostConfig {
-            addr: *ip,
-            auth: None,
-            port: None,
-            user: None,
-        });
-    }
-
-    // Process hosts in batches to respect parallelism setting while maintaining order
-    let batch_size = parallel as usize;
-    let mut processed = 0;
-
-    while processed < massh_hosts.len() {
-        let end = std::cmp::min(processed + batch_size, massh_hosts.len());
-        
-        // Create a new config and vector for this batch
-        let mut batch_hosts = Vec::new();
-        for host in &massh_hosts[processed..end] {
-            batch_hosts.push(MasshHostConfig {
-                addr: host.addr,
-                auth: None,
-                port: None,
-                user: None,
-            });
-        }
-        
-        // Create a new MasshClient for this batch with appropriate configuration
-        let batch_config = MasshConfig {
-            default_auth: SshAuth::Agent,
-            default_port: 22,
-            default_user: username.to_string(),
-            threads: batch_hosts.len() as u64,
-            timeout: 0,
-            hosts: batch_hosts,
-        };
-        
-        let batch_massh = MasshClient::from(&batch_config);
-        
-        // Execute the command on all hosts in this batch
-        let rx = batch_massh.execute(command.to_string());
-        
-        // Collect all results from this batch before moving to the next
-        let mut batch_results = Vec::new();
-        
-        while let Ok((host, result)) = rx.recv() {
-            // Extract IP address from the massh result
-            let ip: String = host.split('@').collect::<Vec<_>>()[1]
-                .split(':')
-                .collect::<Vec<_>>()[0]
-                .to_string();
-            let ip = ip.parse::<IpAddr>().unwrap();
-            
-            // Lookup the original hostname and index
-            if let Some((hostname, idx)) = hosts_and_ips.get(&ip) {
-                batch_results.push((hostname.clone(), ip, result, *idx));
-            } else {
-                error!("Unexpected IP address in result: {}", ip);
-            }
-        }
-        
-        // Sort results by original index to maintain consistent display order
-        batch_results.sort_by_key(|(_, _, _, idx)| *idx);
-        
-        // Display results for each host in the batch
-        for (hostname, _ip, result, _) in batch_results {
-            let display_name = shorten_hostname(&hostname, common_suffix);
-            
-            // Display hostname with consistent formatting
-            println!("\n{}", display_name.yellow().bold().to_string());
-            
-            // Handle execution result
-            let output = match result {
-                Ok(output) => output,
-                Err(e) => {
-                    error!("Can't access server: {}", e);
-                    continue;
-                }
-            };
-            
-            // Format exit code with color
-            let code_string = if output.exit_status == 0 {
-                format!("{}", output.exit_status.to_string().green())
-            } else {
-                format!("{}", output.exit_status.to_string().red())
-            };
-            
-            // Display summary of command execution
-            println!(
-                "{}",
-                format!(
-                    "Exit code [{}] / stdout {} bytes / stderr {} bytes",
-                    code_string,
-                    output.stdout.len(),
-                    output.stderr.len()
-                )
-                .bold()
-            );
-
-            // Display command output if not in code-only mode
-            if !code_only {
-                // Display stdout with appropriate formatting
-                match String::from_utf8(output.stdout) {
-                    Ok(stdout) => match stdout.as_str() {
-                        "" => {}
-                        _ => {
-                            let prefix = if output.exit_status != 0 {
-                                format!("{}", "│".cyan())
-                            } else {
-                                format!("{}", "│".green())
-                            };
-                            for line in stdout.lines() {
-                                println!("{} {} - {}", prefix, display_name.yellow(), line);
-                            }
-                        }
-                    },
-                    Err(_) => {}
-                }
-                // Display stderr with appropriate formatting
-                match String::from_utf8(output.stderr) {
-                    Ok(stderr) => match stderr.as_str() {
-                        "" => {}
-                        _ => {
-                            for line in stderr.lines() {
-                                println!("{} {} - {}", "║".red(), display_name.yellow(), line);
-                            }
-                        }
-                    },
-                    Err(_) => {}
-                }
-            }
-        }
-        
-        processed = end;
-    }
 }
 
 /// Main entry point for the application
@@ -660,45 +506,40 @@ fn main() {
         info!("Run command on {} servers.", &valid_hosts.len());
     }
 
-    // Execute commands using selected method (system SSH or embedded library)
-    if !args.embedded_ssh {
-        // Use system SSH client (default behavior)
-        let batch_size = args.parallel as usize;
-        let mut processed = 0;
+    // Execute commands using system SSH client
+    let batch_size = args.parallel as usize;
+    let mut processed = 0;
+    
+    while processed < valid_hosts.len() {
+        let end = std::cmp::min(processed + batch_size, valid_hosts.len());
+        let batch = &valid_hosts[processed..end];
         
-        while processed < valid_hosts.len() {
-            let end = std::cmp::min(processed + batch_size, valid_hosts.len());
-            let batch = &valid_hosts[processed..end];
+        // Create a thread for each host in the current batch
+        let mut handles = Vec::new();
+        
+        for (hostname, _, _) in batch {
+            let hostname = hostname.clone();
+            let username = args.username.clone();
+            let command = args.command.clone();
+            let common_suffix_clone = common_suffix.clone();
+            let code_only = args.code;
             
-            // Create a thread for each host in the current batch
-            let mut handles = Vec::new();
+            // Execute SSH command in a separate thread
+            let handle = thread::spawn(move || {
+                match execute_ssh_command(&hostname, &username, &command, &common_suffix_clone, code_only) {
+                    Ok(_) => (),
+                    Err(e) => error!("Error executing command on {}: {}", hostname, e),
+                }
+            });
             
-            for (hostname, _, _) in batch {
-                let hostname = hostname.clone();
-                let username = args.username.clone();
-                let command = args.command.clone();
-                let common_suffix_clone = common_suffix.clone();
-                
-                // Execute SSH command in a separate thread
-                let handle = thread::spawn(move || {
-                    match execute_ssh_command(&hostname, &username, &command, &common_suffix_clone) {
-                        Ok(_) => (),
-                        Err(e) => error!("Error executing command on {}: {}", hostname, e),
-                    }
-                });
-                
-                handles.push(handle);
-            }
-            
-            // Wait for all threads in this batch to complete
-            for handle in handles {
-                handle.join().unwrap();
-            }
-            
-            processed = end;
+            handles.push(handle);
         }
-    } else {
-        // Use the embedded massh library implementation
-        execute_with_massh(&valid_hosts, &args.username, &args.command, args.parallel, args.code, &common_suffix);
+        
+        // Wait for all threads in this batch to complete
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        
+        processed = end;
     }
 }
