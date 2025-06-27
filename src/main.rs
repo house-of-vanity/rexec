@@ -206,12 +206,13 @@ fn main() {
     }
 
     info!("Matched hosts:");
-    
+
     // Do DNS resolution in parallel but store results for ordered display later
     let resolved_ips_with_indices = Arc::new(Mutex::new(Vec::<(String, IpAddr, usize)>::new()));
 
-    host_with_indices.par_iter().for_each(|(host, idx)| {
-        match lookup_host(&host.name) {
+    host_with_indices
+        .par_iter()
+        .for_each(|(host, idx)| match lookup_host(&host.name) {
             Ok(ips) if !ips.is_empty() => {
                 let ip = ips[0];
                 let mut results = resolved_ips_with_indices.lock().unwrap();
@@ -219,19 +220,26 @@ fn main() {
             }
             Ok(_) => {
                 let mut results = resolved_ips_with_indices.lock().unwrap();
-                results.push((host.name.clone(), IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), *idx));
+                results.push((
+                    host.name.clone(),
+                    IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
+                    *idx,
+                ));
             }
             Err(_) => {
                 let mut results = resolved_ips_with_indices.lock().unwrap();
-                results.push((host.name.clone(), IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), *idx));
+                results.push((
+                    host.name.clone(),
+                    IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
+                    *idx,
+                ));
             }
-        }
-    });
+        });
 
     // Sort by original index to ensure hosts are displayed in order
     let mut resolved_hosts = resolved_ips_with_indices.lock().unwrap().clone();
     resolved_hosts.sort_by_key(|(_, _, idx)| *idx);
-    
+
     // Now print the hosts in the correct order
     for (hostname, ip, _) in &resolved_hosts {
         if ip.is_unspecified() {
@@ -260,7 +268,7 @@ fn main() {
 
     // Process hosts in batches to maintain order
     let batch_size = args.parallel as usize;
-    
+
     // Ask for confirmation
     if !massh_hosts.is_empty()
         && (args.noconfirm
@@ -281,7 +289,7 @@ fn main() {
 
         while processed < massh_hosts.len() {
             let end = std::cmp::min(processed + batch_size, massh_hosts.len());
-            
+
             // Create a new config and vector for this batch
             let mut batch_hosts = Vec::new();
             for host in &massh_hosts[processed..end] {
@@ -292,7 +300,7 @@ fn main() {
                     user: None,
                 });
             }
-            
+
             // Create a new MasshClient for this batch
             let batch_config = MasshConfig {
                 default_auth: SshAuth::Agent,
@@ -302,36 +310,36 @@ fn main() {
                 timeout: 0,
                 hosts: batch_hosts,
             };
-            
+
             let batch_massh = MasshClient::from(&batch_config);
-            
+
             // Run commands on this batch
             let rx = batch_massh.execute(args.command.clone());
-            
+
             // Collect all results from this batch before moving to the next
             let mut batch_results = Vec::new();
-            
+
             while let Ok((host, result)) = rx.recv() {
                 let ip: String = host.split('@').collect::<Vec<_>>()[1]
                     .split(':')
                     .collect::<Vec<_>>()[0]
                     .to_string();
                 let ip = ip.parse::<IpAddr>().unwrap();
-                
+
                 if let Some((hostname, idx)) = hosts_and_ips.get(&ip) {
                     batch_results.push((hostname.clone(), ip, result, *idx));
                 } else {
                     error!("Unexpected IP address in result: {}", ip);
                 }
             }
-            
+
             // Sort the batch results by index to ensure they're displayed in order
             batch_results.sort_by_key(|(_, _, _, idx)| *idx);
-            
+
             // Display the results
             for (hostname, _ip, result, _) in batch_results {
                 println!("\n{}", hostname.yellow().bold().to_string());
-                
+
                 let output = match result {
                     Ok(output) => output,
                     Err(e) => {
@@ -339,13 +347,13 @@ fn main() {
                         continue;
                     }
                 };
-                
+
                 let code_string = if output.exit_status == 0 {
                     format!("{}", output.exit_status.to_string().green())
                 } else {
                     format!("{}", output.exit_status.to_string().red())
                 };
-                
+
                 println!(
                     "{}",
                     format!(
@@ -387,7 +395,7 @@ fn main() {
                     }
                 }
             }
-            
+
             processed = end;
         }
     } else {
