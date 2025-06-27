@@ -315,7 +315,7 @@ fn execute_ssh_command(
     };
 
     // Function to handle output lines with proper block management
-    let handle_output = |line: String, display_name: &str, code_only: bool| {
+    let handle_output = |line: String, display_name: &str, code_only: bool, is_stderr: bool| {
         if !code_only {
             let mut current_block = CURRENT_BLOCK.lock().unwrap();
 
@@ -338,8 +338,19 @@ fn execute_ssh_command(
                 }
             }
 
-            // Print the log line
-            println!("│ {} │ {}", display_name.yellow(), line);
+            // Print the log line with colored separator based on stream type
+            let separator = if is_stderr {
+                "│".red()
+            } else {
+                "│".green()
+            };
+            println!(
+                "{} {} {} {}",
+                separator,
+                display_name.yellow(),
+                separator,
+                line
+            );
         }
     };
 
@@ -353,7 +364,8 @@ fn execute_ssh_command(
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    handle_output(line, &display_name_stdout, code_only_stdout);
+                    handle_output(line, &display_name_stdout, code_only_stdout, false);
+                    // false = stdout
                 }
                 Err(_) => break,
             }
@@ -370,7 +382,8 @@ fn execute_ssh_command(
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    handle_output(line, &display_name_stderr, code_only_stderr);
+                    handle_output(line, &display_name_stderr, code_only_stderr, true);
+                    // true = stderr
                 }
                 Err(_) => break,
             }
