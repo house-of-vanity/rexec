@@ -66,12 +66,12 @@ struct Args {
     /// Maximum number of parallel SSH connections
     #[arg(short, long, default_value_t = 100)]
     parallel: i32,
-    
+
     /// Use the embedded SSH client library instead of system SSH command
     #[arg(
         long,
         help = "Use embedded SSH client instead of system SSH. Does not support 'live output'.",
-        default_value_t = false,
+        default_value_t = false
     )]
     embedded_ssh: bool,
 }
@@ -86,69 +86,69 @@ struct Host {
 }
 
 /// Find common domain suffix across all hostnames to simplify output display
-/// 
+///
 /// This function analyzes all hostnames to identify a common domain suffix
 /// which can be shortened during display to improve readability.
-/// 
+///
 /// # Arguments
 /// * `hostnames` - A slice of strings containing all server hostnames
-/// 
+///
 /// # Returns
 /// * `Option<String>` - The common suffix if found, or None
 fn find_common_suffix(hostnames: &[String]) -> Option<String> {
     if hostnames.is_empty() {
         return None;
     }
-    
+
     // Don't truncate if only one host
     if hostnames.len() == 1 {
         return None;
     }
-    
+
     let first = &hostnames[0];
-    
+
     // Start with assumption that the entire first hostname is the common suffix
     let mut common = first.clone();
-    
+
     // Iterate through remaining hostnames, reducing the common part
     for hostname in hostnames.iter().skip(1) {
         // Exit early if no common part remains
         if common.is_empty() {
             return None;
         }
-        
+
         // Find common suffix with current hostname
         let mut new_common = String::new();
-        
+
         // Search for common suffix by comparing characters from right to left
         let mut common_chars = common.chars().rev();
         let mut hostname_chars = hostname.chars().rev();
-        
+
         loop {
             match (common_chars.next(), hostname_chars.next()) {
                 (Some(c1), Some(c2)) if c1 == c2 => new_common.insert(0, c1),
                 _ => break,
             }
         }
-        
+
         common = new_common;
     }
-    
+
     // Ensure the common part is a valid domain suffix (starts with a dot)
     if common.is_empty() || !common.starts_with('.') {
         return None;
     }
-    
+
     // Return the identified common suffix
     Some(common)
 }
 
 /// Shorten hostname by removing the common suffix and replacing with an asterisk
-/// 
+///
 /// # Arguments
 /// * `hostname` - The original hostname
 /// * `common_suffix` - Optional common suffix to remove
-/// 
+///
 /// # Returns
 /// * `String` - Shortened hostname or original if no common suffix
 fn shorten_hostname(hostname: &str, common_suffix: &Option<String>) -> String {
@@ -156,13 +156,13 @@ fn shorten_hostname(hostname: &str, common_suffix: &Option<String>) -> String {
         Some(suffix) if hostname.ends_with(suffix) => {
             let short_name = hostname[..hostname.len() - suffix.len()].to_string();
             format!("{}{}", short_name, "*")
-        },
+        }
         _ => hostname.to_string(),
     }
 }
 
 /// Read and parse the SSH known_hosts file to extract server names
-/// 
+///
 /// # Returns
 /// * `Vec<Host>` - List of hosts found in the known_hosts file
 fn read_known_hosts() -> Vec<Host> {
@@ -184,11 +184,11 @@ fn read_known_hosts() -> Vec<Host> {
 }
 
 /// Expand a numeric range in the format [start:end] to a list of strings
-/// 
+///
 /// # Arguments
 /// * `start` - Starting number (inclusive)
 /// * `end` - Ending number (inclusive)
-/// 
+///
 /// # Returns
 /// * `Vec<String>` - List of numbers as strings
 fn expand_range(start: i32, end: i32) -> Vec<String> {
@@ -196,10 +196,10 @@ fn expand_range(start: i32, end: i32) -> Vec<String> {
 }
 
 /// Expand a comma-separated list in the format {item1,item2,item3} to a list of strings
-/// 
+///
 /// # Arguments
 /// * `list` - Comma-separated string to expand
-/// 
+///
 /// # Returns
 /// * `Vec<String>` - List of expanded items
 fn expand_list(list: &str) -> Vec<String> {
@@ -207,14 +207,14 @@ fn expand_list(list: &str) -> Vec<String> {
 }
 
 /// Expand a server pattern string with range and list notation into individual hostnames
-/// 
+///
 /// Supports two expansion types:
 /// - Range expansion: server-[1:5] → server-1, server-2, server-3, server-4, server-5
 /// - List expansion: server-{prod,dev} → server-prod, server-dev
-/// 
+///
 /// # Arguments
 /// * `s` - Pattern string to expand
-/// 
+///
 /// # Returns
 /// * `Vec<Host>` - List of expanded Host objects
 fn expand_string(s: &str) -> Vec<Host> {
@@ -278,46 +278,54 @@ fn expand_string(s: &str) -> Vec<Host> {
 }
 
 /// Execute a command on a single host using the system SSH client
-/// 
+///
 /// This function runs an SSH command using the system's SSH client,
 /// capturing and displaying output in real-time with proper formatting.
-/// 
+///
 /// # Arguments
 /// * `hostname` - Target server hostname
 /// * `username` - SSH username
 /// * `command` - Command to execute
 /// * `common_suffix` - Optional common suffix for hostname display formatting
-/// 
+///
 /// # Returns
 /// * `Result<i32, String>` - Exit code on success or error message
-fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suffix: &Option<String>) -> Result<i32, String> {
+fn execute_ssh_command(
+    hostname: &str,
+    username: &str,
+    command: &str,
+    common_suffix: &Option<String>,
+) -> Result<i32, String> {
     let display_name = shorten_hostname(hostname, common_suffix);
-    
+
     // Display execution start message with shortened hostname
     println!("\n{} - STARTED", display_name.yellow().bold());
-    
+
     // Build the SSH command with appropriate options
     let mut ssh_cmd = Command::new("ssh");
-    ssh_cmd.arg("-o").arg("StrictHostKeyChecking=no")
-         .arg("-o").arg("BatchMode=yes")
-         .arg(format!("{}@{}", username, hostname))
-         .arg(command)
-         .stdout(Stdio::piped())
-         .stderr(Stdio::piped());
-    
+    ssh_cmd
+        .arg("-o")
+        .arg("StrictHostKeyChecking=no")
+        .arg("-o")
+        .arg("BatchMode=yes")
+        .arg(format!("{}@{}", username, hostname))
+        .arg(command)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
     // Execute the command
     let mut child = match ssh_cmd.spawn() {
         Ok(child) => child,
         Err(e) => return Err(format!("Failed to start SSH process: {}", e)),
     };
-    
+
     // Capture and display stdout in real-time using a dedicated thread
     let stdout = child.stdout.take().unwrap();
     let display_name_stdout = display_name.clone();
     let stdout_thread = thread::spawn(move || {
         let reader = BufReader::new(stdout);
         let prefix = format!("{}", "│".green());
-        
+
         for line in reader.lines() {
             match line {
                 Ok(line) => println!("{} {} - {}", prefix, display_name_stdout.yellow(), line),
@@ -325,14 +333,14 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
             }
         }
     });
-    
+
     // Capture and display stderr in real-time using a dedicated thread
     let stderr = child.stderr.take().unwrap();
     let display_name_stderr = display_name.clone();
     let stderr_thread = thread::spawn(move || {
         let reader = BufReader::new(stderr);
         let prefix = format!("{}", "║".red());
-        
+
         for line in reader.lines() {
             match line {
                 Ok(line) => println!("{} {} - {}", prefix, display_name_stderr.yellow(), line),
@@ -340,17 +348,17 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
             }
         }
     });
-    
+
     // Wait for command to complete
     let status = match child.wait() {
         Ok(status) => status,
         Err(e) => return Err(format!("Failed to wait for SSH process: {}", e)),
     };
-    
+
     // Wait for stdout and stderr threads to complete
     stdout_thread.join().unwrap();
     stderr_thread.join().unwrap();
-    
+
     // Format exit code with color (green for success, red for failure)
     let exit_code = status.code().unwrap_or(-1);
     let code_string = if exit_code == 0 {
@@ -358,18 +366,22 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
     } else {
         format!("{}", exit_code.to_string().red())
     };
-    
+
     // Display completion message
-    println!("{} - COMPLETED (Exit code: [{}])", display_name.yellow().bold(), code_string);
-    
+    println!(
+        "{} - COMPLETED (Exit code: [{}])",
+        display_name.yellow().bold(),
+        code_string
+    );
+
     Ok(exit_code)
 }
 
 /// Execute commands on multiple hosts using the massh library (embedded SSH)
-/// 
+///
 /// This function handles batch processing of hosts to maintain the original order
 /// while executing commands in parallel using the massh library.
-/// 
+///
 /// # Arguments
 /// * `hosts` - Vector of (hostname, IP address, original index) tuples
 /// * `username` - SSH username
@@ -377,7 +389,14 @@ fn execute_ssh_command(hostname: &str, username: &str, command: &str, common_suf
 /// * `parallel` - Maximum number of parallel connections
 /// * `code_only` - Whether to display only exit codes
 /// * `common_suffix` - Optional common suffix for hostname display formatting
-fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command: &str, parallel: i32, code_only: bool, common_suffix: &Option<String>) {
+fn execute_with_massh(
+    hosts: &[(String, IpAddr, usize)],
+    username: &str,
+    command: &str,
+    parallel: i32,
+    code_only: bool,
+    common_suffix: &Option<String>,
+) {
     // Create a lookup table for host data using IP addresses as keys
     let mut hosts_and_ips: HashMap<IpAddr, (String, usize)> = HashMap::new();
     let mut massh_hosts: Vec<MasshHostConfig> = Vec::new();
@@ -398,7 +417,7 @@ fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command
 
     while processed < massh_hosts.len() {
         let end = std::cmp::min(processed + batch_size, massh_hosts.len());
-        
+
         // Create a new config and vector for this batch
         let mut batch_hosts = Vec::new();
         for host in &massh_hosts[processed..end] {
@@ -409,7 +428,7 @@ fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command
                 user: None,
             });
         }
-        
+
         // Create a new MasshClient for this batch with appropriate configuration
         let batch_config = MasshConfig {
             default_auth: SshAuth::Agent,
@@ -419,15 +438,15 @@ fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command
             timeout: 0,
             hosts: batch_hosts,
         };
-        
+
         let batch_massh = MasshClient::from(&batch_config);
-        
+
         // Execute the command on all hosts in this batch
         let rx = batch_massh.execute(command.to_string());
-        
+
         // Collect all results from this batch before moving to the next
         let mut batch_results = Vec::new();
-        
+
         while let Ok((host, result)) = rx.recv() {
             // Extract IP address from the massh result
             let ip: String = host.split('@').collect::<Vec<_>>()[1]
@@ -435,7 +454,7 @@ fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command
                 .collect::<Vec<_>>()[0]
                 .to_string();
             let ip = ip.parse::<IpAddr>().unwrap();
-            
+
             // Lookup the original hostname and index
             if let Some((hostname, idx)) = hosts_and_ips.get(&ip) {
                 batch_results.push((hostname.clone(), ip, result, *idx));
@@ -443,17 +462,17 @@ fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command
                 error!("Unexpected IP address in result: {}", ip);
             }
         }
-        
+
         // Sort results by original index to maintain consistent display order
         batch_results.sort_by_key(|(_, _, _, idx)| *idx);
-        
+
         // Display results for each host in the batch
         for (hostname, _ip, result, _) in batch_results {
             let display_name = shorten_hostname(&hostname, common_suffix);
-            
+
             // Display hostname with consistent formatting
             println!("\n{}", display_name.yellow().bold().to_string());
-            
+
             // Handle execution result
             let output = match result {
                 Ok(output) => output,
@@ -462,14 +481,14 @@ fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command
                     continue;
                 }
             };
-            
+
             // Format exit code with color
             let code_string = if output.exit_status == 0 {
                 format!("{}", output.exit_status.to_string().green())
             } else {
                 format!("{}", output.exit_status.to_string().red())
             };
-            
+
             // Display summary of command execution
             println!(
                 "{}",
@@ -515,7 +534,7 @@ fn execute_with_massh(hosts: &[(String, IpAddr, usize)], username: &str, command
                 }
             }
         }
-        
+
         processed = end;
     }
 }
@@ -527,7 +546,7 @@ fn main() {
         .format_timestamp(None)
         .format_target(false)
         .init();
-    
+
     // Parse command-line arguments
     let args = Args::parse();
 
@@ -584,13 +603,14 @@ fn main() {
     }
 
     info!("Matched hosts:");
-    
+
     // Perform DNS resolution for all hosts in parallel
     // Results are stored with original indices to maintain order
     let resolved_ips_with_indices = Arc::new(Mutex::new(Vec::<(String, IpAddr, usize)>::new()));
 
-    host_with_indices.par_iter().for_each(|(host, idx)| {
-        match lookup_host(&host.name) {
+    host_with_indices
+        .par_iter()
+        .for_each(|(host, idx)| match lookup_host(&host.name) {
             Ok(ips) if !ips.is_empty() => {
                 let ip = ips[0];
                 let mut results = resolved_ips_with_indices.lock().unwrap();
@@ -598,19 +618,26 @@ fn main() {
             }
             Ok(_) => {
                 let mut results = resolved_ips_with_indices.lock().unwrap();
-                results.push((host.name.clone(), IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), *idx));
+                results.push((
+                    host.name.clone(),
+                    IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
+                    *idx,
+                ));
             }
             Err(_) => {
                 let mut results = resolved_ips_with_indices.lock().unwrap();
-                results.push((host.name.clone(), IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), *idx));
+                results.push((
+                    host.name.clone(),
+                    IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
+                    *idx,
+                ));
             }
-        }
-    });
+        });
 
     // Sort hosts by original index to maintain consistent display order
     let mut resolved_hosts = resolved_ips_with_indices.lock().unwrap().clone();
     resolved_hosts.sort_by_key(|(_, _, idx)| *idx);
-    
+
     // Display all matched hosts with their resolved IPs
     for (hostname, ip, _) in &resolved_hosts {
         if ip.is_unspecified() {
@@ -631,16 +658,22 @@ fn main() {
         error!("No valid hosts to connect to");
         process::exit(1);
     }
-    
+
     // Find common domain suffix to optimize display
-    let hostnames: Vec<String> = valid_hosts.iter().map(|(hostname, _, _)| hostname.clone()).collect();
+    let hostnames: Vec<String> = valid_hosts
+        .iter()
+        .map(|(hostname, _, _)| hostname.clone())
+        .collect();
     let common_suffix = find_common_suffix(&hostnames);
-    
+
     // Inform user about display optimization if common suffix found
     if let Some(suffix) = &common_suffix {
-        info!("Common domain suffix found: '{}' (will be displayed as '*')", suffix);
+        info!(
+            "Common domain suffix found: '{}' (will be displayed as '*')",
+            suffix
+        );
     }
-    
+
     // Ask for confirmation before proceeding (unless --noconfirm is specified)
     if !args.noconfirm
         && match Question::new(&*format!(
@@ -665,40 +698,48 @@ fn main() {
         // Use system SSH client (default behavior)
         let batch_size = args.parallel as usize;
         let mut processed = 0;
-        
+
         while processed < valid_hosts.len() {
             let end = std::cmp::min(processed + batch_size, valid_hosts.len());
             let batch = &valid_hosts[processed..end];
-            
+
             // Create a thread for each host in the current batch
             let mut handles = Vec::new();
-            
+
             for (hostname, _, _) in batch {
                 let hostname = hostname.clone();
                 let username = args.username.clone();
                 let command = args.command.clone();
                 let common_suffix_clone = common_suffix.clone();
-                
+
                 // Execute SSH command in a separate thread
                 let handle = thread::spawn(move || {
-                    match execute_ssh_command(&hostname, &username, &command, &common_suffix_clone) {
+                    match execute_ssh_command(&hostname, &username, &command, &common_suffix_clone)
+                    {
                         Ok(_) => (),
                         Err(e) => error!("Error executing command on {}: {}", hostname, e),
                     }
                 });
-                
+
                 handles.push(handle);
             }
-            
+
             // Wait for all threads in this batch to complete
             for handle in handles {
                 handle.join().unwrap();
             }
-            
+
             processed = end;
         }
     } else {
         // Use the embedded massh library implementation
-        execute_with_massh(&valid_hosts, &args.username, &args.command, args.parallel, args.code, &common_suffix);
+        execute_with_massh(
+            &valid_hosts,
+            &args.username,
+            &args.command,
+            args.parallel,
+            args.code,
+            &common_suffix,
+        );
     }
 }
