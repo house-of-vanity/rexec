@@ -1,6 +1,6 @@
 [package]
 name = "rexec"
-version = "1.4.0"
+version = "1.5.0"
 readme = "https://github.com/house-of-vanity/rexec#readme"
 edition = "2021"
 description = "Parallel SSH executor"
@@ -25,3 +25,4 @@ colored = "3"
 itertools = "0.14"
 brace-expand = "0.1.0"
 question = "0.2.2"
+lazy_static = "1.5.0"
